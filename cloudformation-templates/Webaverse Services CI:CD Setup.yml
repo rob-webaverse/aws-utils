@@ -12,11 +12,11 @@ Parameters:
     Type: String
     Default: https://github.com/rob-webaverse/app.git
     Description: Link to the git repo that contains the service
-  DockerHubCredentials-Username:
+  DockerHubCredentialsUsername:
     Type: String
     Default: username
     Description: DockerHub username to pull down Docker images
-  DockerHubCredentials-Password:
+  DockerHubCredentialsPassword:
     Type: String
     NoEcho: true
     Default: password
@@ -930,4 +930,4 @@ Resources:
         Type: "AWS::SecretsManager::Secret"
         Properties:
             Name: "dockerhub"
-            SecretString: '{"username":DockerHubCredentials-Username,"password":DockerHubCredentials-Password}'
+            SecretString: '{"username":DockerHubCredentialsUsername,"password":DockerHubCredentialsPassword}'
