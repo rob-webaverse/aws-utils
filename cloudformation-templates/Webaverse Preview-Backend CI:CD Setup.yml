@@ -284,15 +284,11 @@ Resources:
                         {
                             "Action": [
                                 "elasticbeanstalk:*",
-                                "ec2:*",
                                 "elasticloadbalancing:*",
                                 "autoscaling:*",
                                 "cloudwatch:*",
                                 "s3:*",
-                                "sns:*",
                                 "cloudformation:*",
-                                "rds:*",
-                                "sqs:*",
                                 "ecs:*"
                             ],
                             "Resource": "*",
