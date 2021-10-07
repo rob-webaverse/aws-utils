@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: ""
+Resources:
+    IAMGroup:
+        Type: "AWS::IAM::Group"
+        Properties:
+            Path: "/"
+            GroupName: "webaverse-managers"
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
+              - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+              - "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess"
+              - "arn:aws:iam::aws:policy/AWSCodePipelineFullAccess"
+              - "arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess"
+              - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+
+
