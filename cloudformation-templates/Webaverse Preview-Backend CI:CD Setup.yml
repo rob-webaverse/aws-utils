@@ -1,7 +1,27 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Metadata:
     Generator: "former2"
-Description: ""
+Description: "Webaverse Service Containerization"
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: test
+    Description: Name the service that will be containerized
+  GitSource:
+    Type: String
+    Default: https://github.com/rob-webaverse/app.git
+    Description: Link to the git repo that contains the service
+  DockerHubCredentials-Username:
+    Type: String
+    Default: username
+    Description: DockerHub username to pull down Docker images
+  DockerHubCredentials-Password:
+    Type: String
+    NoEcho: true
+    Default: password
+    Description: DockerHub password to pull down Docker images
+
 Resources:
     IAMManagedPolicy:
         Type: "AWS::IAM::ManagedPolicy"
@@ -405,7 +425,7 @@ Resources:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/service-role/"
-            RoleName: !Sub "AWSCodePipelineServiceRole-${AWS::Region}-webaverse-pipeline-preview"
+            RoleName: !Sub "AWSCodePipelineServiceRole-${AWS::Region}-webaverse-pipeline-${ServiceName}"
             AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codepipeline.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
@@ -697,7 +717,8 @@ Resources:
     ECSCluster:
         Type: "AWS::ECS::Cluster"
         Properties:
-            ClusterName: "preview-backend"
+            ClusterName: 
+                Ref: ServiceName
             CapacityProviders: 
               - "FARGATE_SPOT"
               - "FARGATE"
@@ -905,3 +926,8 @@ Resources:
             AWSServiceName: "organizations.amazonaws.com"
             Description: "Service-linked role used by AWS Organizations to enable integration of other AWS services with Organizations."
 
+    SecretsManagerSecret:
+        Type: "AWS::SecretsManager::Secret"
+        Properties:
+            Name: "dockerhub"
+            SecretString: '{"username":DockerHubCredentials-Username,"password":DockerHubCredentials-Password}'
