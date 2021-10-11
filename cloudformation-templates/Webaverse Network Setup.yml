@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: "Webaverse Service Network"
+
+Resources:
+    EC2VPC:
+        Type: "AWS::EC2::VPC"
+        Properties:
+            CidrBlock: "10.10.0.0/16"
+            EnableDnsSupport: true
+            EnableDnsHostnames: true
+            InstanceTenancy: "default"
+            Tags:
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services"
+
+    EC2SubnetA:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}a"
+            CidrBlock: "10.10.0.0/20"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: true
+            Tags: 
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetA"
+
+    EC2SubnetB:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}b"
+            CidrBlock: "10.10.16.0/20"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: true
+            Tags: 
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetB"
+
+    EC2SubnetC:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}c"
+            CidrBlock: "10.10.32.0/20"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: true
+            Tags:
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetC"
+
+    ECSCluster:
+        Type: "AWS::ECS::Cluster"
+        Properties:
+            ClusterName: !Sub "ECSCluster-${AWS::Region}"
+            CapacityProviders: 
+              - "FARGATE_SPOT"
+              - "FARGATE"
+    Secrets:
+        Type: "AWS::Cloudformation::Stack"
+        Parameters:
+            DockerHubCredentialsUsername:
+                Type: String
+                Default: username
+                Description: DockerHub username to pull down Docker images
+            DockerHubCredentialsPassword:
+                Type: String
+                NoEcho: true
+                Default: password
+                Description: DockerHub password to pull down Docker images
+            GitHubPersonalAccessToken:
+                Type: String
+                NoEcho: true
+                Default: password
+                Description: GitHub Personal Access Token to access changes to the repos
+        TemplateURL: s3://rcc-cftemplates/Webaverse Services CI:CD Setup.yml

@@ -21,12 +21,21 @@ Parameters:
     NoEcho: true
     Default: password
     Description: DockerHub password to pull down Docker images
+  GitHubPersonalAccessToken:
+    Type: String
+    NoEcho: true
+    Default: password
+    Description: GitHub Personal Access Token to access changes to the repos
+  ServiceContainerListeningPorts:
+    Type: List<Number>
+    Default: 80
+    Description: Ports that the service is presenting and should thus be open to the container
 
 Resources:
-    IAMManagedPolicy:
+    CodeBuildSecretsManagerPolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodeBuildSecretsManagerPolicy-${CodeBuildProject}-${AWS::Region}"
+            ManagedPolicyName: !Sub "CodeBuildSecretsManagerPolicy-${ServiceName}-${AWS::Region}"
             Path: "/service-role/"
             PolicyDocument: !Sub |
                 {
@@ -44,10 +53,10 @@ Resources:
                     ]
                 }
 
-    IAMManagedPolicy2:
+    CodeBuildBasePolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${CodeBuildProject}-${AWS::Region}"
+            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ServiceName}-${AWS::Region}"
             Path: "/service-role/"
             PolicyDocument: !Sub |
                 {
@@ -56,8 +65,8 @@ Resources:
                         {
                             "Effect": "Allow",
                             "Resource": [
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${CodeBuildProject}",
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${CodeBuildProject}:*"
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
                             ],
                             "Action": [
                                 "logs:CreateLogGroup",
@@ -81,8 +90,8 @@ Resources:
                         {
                             "Effect": "Allow",
                             "Resource": [
-                                "arn:aws:s3:::${S3Bucket2}",
-                                "arn:aws:s3:::${S3Bucket2}/*"
+                                "arn:aws:s3:::${CodePipelineS3Bucket}",
+                                "arn:aws:s3:::${CodePipelineS3Bucket}/*"
                             ],
                             "Action": [
                                 "s3:PutObject",
@@ -100,66 +109,17 @@ Resources:
                                 "codebuild:BatchPutCodeCoverages"
                             ],
                             "Resource": [
-                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${CodeBuildProject}*"
+                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*"
                             ]
                         }
                     ]
                 }
 
-    IAMManagedPolicy3:
-        Type: "AWS::IAM::ManagedPolicy"
-        Properties:
-            ManagedPolicyName: !Sub "CodeBuildBasePolicy-webaverse-${ECSCluster}-${AWS::Region}"
-            Path: "/service-role/"
-            PolicyDocument: !Sub |
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Resource": [
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ECSCluster}",
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ECSCluster}:*"
-                            ],
-                            "Action": [
-                                "logs:CreateLogGroup",
-                                "logs:CreateLogStream",
-                                "logs:PutLogEvents"
-                            ]
-                        },
-                        {
-                            "Effect": "Allow",
-                            "Resource": [
-                                "arn:aws:s3:::codepipeline-${AWS::Region}-*"
-                            ],
-                            "Action": [
-                                "s3:PutObject",
-                                "s3:GetObject",
-                                "s3:GetObjectVersion",
-                                "s3:GetBucketAcl",
-                                "s3:GetBucketLocation"
-                            ]
-                        },
-                        {
-                            "Effect": "Allow",
-                            "Action": [
-                                "codebuild:CreateReportGroup",
-                                "codebuild:CreateReport",
-                                "codebuild:UpdateReport",
-                                "codebuild:BatchPutTestCases",
-                                "codebuild:BatchPutCodeCoverages"
-                            ],
-                            "Resource": [
-                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ECSCluster}-v2-*"
-                            ]
-                        }
-                    ]
-                }
 
-    IAMManagedPolicy4:
+    CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodeBuildImageRepositoryPolicy-webaverse-${ECSCluster}-${AWS::Region}"
+            ManagedPolicyName: !Sub "CodeBuildImageRepositoryPolicy-${ServiceName}-${AWS::Region}"
             Path: "/service-role/"
             PolicyDocument: !Sub |
                 {
@@ -183,15 +143,15 @@ Resources:
                                 "ecr:UploadLayerPart",
                                 "ecr:CompleteLayerUpload"
                             ],
-                            "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/webaverse"
+                            "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/ecrrepository-${ServiceName}-${AWS::Region}"
                         }
                     ]
                 }
 
-    IAMManagedPolicy5:
+    CodeBuildBasePolicy2:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodeBuildBasePolicy-webaverse-${ECSCluster}-${AWS::Region}"
+            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ServiceName}-${AWS::Region}2"
             Path: "/service-role/"
             PolicyDocument: !Sub |
                 {
@@ -245,10 +205,11 @@ Resources:
                     ]
                 }
 
-    IAMManagedPolicy6:
+
+    CodePipelineManagedPolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "${IAMRole}-backend"
+            ManagedPolicyName: !Sub "CodePipelineManagedPolicy-${ServiceName}-${AWS::Region}"
             Path: "/service-role/"
             PolicyDocument: |
                 {
@@ -304,11 +265,15 @@ Resources:
                         {
                             "Action": [
                                 "elasticbeanstalk:*",
+                                "ec2:*",
                                 "elasticloadbalancing:*",
                                 "autoscaling:*",
                                 "cloudwatch:*",
                                 "s3:*",
+                                "sns:*",
                                 "cloudformation:*",
+                                "rds:*",
+                                "sqs:*",
                                 "ecs:*"
                             ],
                             "Resource": "*",
@@ -421,26 +386,17 @@ Resources:
                     "Version": "2012-10-17"
                 }
 
-    IAMRole:
+
+    CodePipelineServiceRole:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/service-role/"
-            RoleName: !Sub "AWSCodePipelineServiceRole-${AWS::Region}-webaverse-pipeline-${ServiceName}"
+            RoleName: !Sub "CodePipelineServiceRole-${ServiceName}-${AWS::Region}"
             AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codepipeline.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-              - !Sub "arn:aws:iam::${AWS::AccountId}:policy/service-role/AWSCodePipelineServiceRole-${AWS::Region}-webaverse-pipeline-${ECSCluster}"
-
-    IAMRole2:
-        Type: "AWS::IAM::Role"
-        Properties:
-            Path: "/"
-            RoleName: "ecsTaskExecutionRole"
-            AssumeRolePolicyDocument: "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
-            MaxSessionDuration: 3600
-            ManagedPolicyArns: 
-              - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+              - !Ref CodePipelineManagedPolicy
 
     ECSTaskDefinition:
         Type: "AWS::ECS::TaskDefinition"
@@ -452,34 +408,34 @@ Resources:
                 LogConfiguration: 
                     LogDriver: "awslogs"
                     Options: 
-                        awslogs-group: !Sub "/ecs/run_webaverse_${ECSCluster}"
+                        awslogs-group: !Sub "/ecs/run_webaverse_${ServiceName}"
                         awslogs-region: !Ref AWS::Region
                         awslogs-stream-prefix: "ecs"
-                Name: !Sub "webaverse-${ECSCluster}"
+                Name: !Sub "webaverse-${ServiceName}"
                 PortMappings: 
                   - 
-                    ContainerPort: 80
-                    HostPort: 80
+                    ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
+                    HostPort: !Select [0, !Ref ServiceContainerListeningPorts]
                     Protocol: "tcp"
-            Family: !Sub "run_webaverse_${ECSCluster}"
-            ExecutionRoleArn: !GetAtt IAMRole2.Arn
+            Family: !Sub "run_webaverse_${ServiceName}"
+            ExecutionRoleArn: !GetAtt ECSTaskExecutionRole2.Arn
             NetworkMode: "awsvpc"
             RequiresCompatibilities: 
               - "FARGATE"
             Cpu: "256"
             Memory: "512"
 
-    IAMRole3:
+    CodeBuildServiceRole:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/service-role/"
-            RoleName: !Sub "codebuild-webaverse-${ECSCluster}-service-role"
+            RoleName: !Sub "CodeBuildServiceRole-${ServiceName}-${AWS::Region}"
             AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codebuild.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-              - !Ref IAMManagedPolicy2
-              - !Ref IAMManagedPolicy
+              - !Ref CodeBuildBasePolicy
+              - !Ref CodeBuildSecretsManagerPolicy
 
     EC2VPC:
         Type: "AWS::EC2::VPC"
@@ -489,53 +445,44 @@ Resources:
             EnableDnsHostnames: true
             InstanceTenancy: "default"
 
-    EC2Subnet:
+    EC2SubnetA:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}a"
             CidrBlock: "10.10.0.0/20"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
+            Tags: 
+            -   Key: "Service"
+                Value: !Sub "${ServiceName}" 
+            -   Key: "Name"
+                Value: !Sub "SubnetA"
 
-    EC2Subnet2:
+    EC2SubnetB:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}b"
             CidrBlock: "10.10.16.0/20"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
+            Tags: 
+            -   Key: "Service"
+                Value: !Sub "${ServiceName}" 
+            -   Key: "Name"
+                Value: !Sub "SubnetB"
 
-    EC2Subnet3:
-        Type: "AWS::EC2::Subnet"
-        Properties:
-            AvailabilityZone: !Sub "${AWS::Region}e"
-            CidrBlock: "10.10.64.0/20"
-            VpcId: !Ref EC2VPC
-            MapPublicIpOnLaunch: true
-
-    EC2Subnet4:
-        Type: "AWS::EC2::Subnet"
-        Properties:
-            AvailabilityZone: !Sub "${AWS::Region}d"
-            CidrBlock: "10.10.48.0/20"
-            VpcId: !Ref EC2VPC
-            MapPublicIpOnLaunch: true
-
-    EC2Subnet5:
-        Type: "AWS::EC2::Subnet"
-        Properties:
-            AvailabilityZone: !Sub "${AWS::Region}f"
-            CidrBlock: "10.10.80.0/20"
-            VpcId: !Ref EC2VPC
-            MapPublicIpOnLaunch: true
-
-    EC2Subnet6:
+    EC2SubnetC:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}c"
             CidrBlock: "10.10.32.0/20"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
+            Tags: 
+            -   Key: "Service"
+                Value: !Sub "${ServiceName}" 
+            -   Key: "Name"
+                Value: !Sub "SubnetC"
 
     EC2NetworkAcl:
         Type: "AWS::EC2::NetworkAcl"
@@ -547,57 +494,19 @@ Resources:
         Properties:
             VpcId: !Ref EC2VPC
 
+ 
     EC2SecurityGroup:
         Type: "AWS::EC2::SecurityGroup"
         Properties:
-            GroupDescription: "Allows access to webaverse app from anywhere"
-            GroupName: "webaverse-app"
+            GroupDescription: !Sub "Allows access to ${ServiceName} from anywhere"
+            GroupName: !Sub "SecurityGroup-${ServiceName}-${AWS::Region}"
             VpcId: !Ref EC2VPC
             SecurityGroupIngress: 
               - 
                 CidrIp: "0.0.0.0/0"
-                FromPort: 3000
+                FromPort: !Select [0, !Ref ServiceContainerListeningPorts]
                 IpProtocol: "tcp"
-                ToPort: 3001
-            SecurityGroupEgress: 
-              - 
-                CidrIp: "0.0.0.0/0"
-                IpProtocol: "-1"
-
-    EC2SecurityGroup2:
-        Type: "AWS::EC2::SecurityGroup"
-        Properties:
-            GroupDescription: "Allows access to http/s from anywhere"
-            GroupName: !Sub "webaverse-${ECSCluster}"
-            VpcId: !Ref EC2VPC
-            SecurityGroupIngress: 
-              - 
-                CidrIp: "0.0.0.0/0"
-                FromPort: 80
-                IpProtocol: "tcp"
-                ToPort: 80
-              - 
-                CidrIp: "0.0.0.0/0"
-                FromPort: 443
-                IpProtocol: "tcp"
-                ToPort: 443
-            SecurityGroupEgress: 
-              - 
-                CidrIp: "0.0.0.0/0"
-                IpProtocol: "-1"
-
-    EC2SecurityGroup3:
-        Type: "AWS::EC2::SecurityGroup"
-        Properties:
-            GroupDescription: "2021-10-05T11:43:52.635Z"
-            GroupName: "ECS Security Group - Allows http/s access to ECS Service"
-            VpcId: !Ref EC2VPC
-            SecurityGroupIngress: 
-              - 
-                CidrIp: "0.0.0.0/0"
-                FromPort: 80
-                IpProtocol: "tcp"
-                ToPort: 80
+                ToPort: !Select [0, !Ref ServiceContainerListeningPorts]
               - 
                 CidrIp: "0.0.0.0/0"
                 FromPort: -1
@@ -613,7 +522,7 @@ Resources:
         Properties:
             HealthCheckIntervalSeconds: 30
             HealthCheckPath: "/"
-            Port: 80
+            Port: !Select [0, !Ref ServiceContainerListeningPorts]
             Protocol: "HTTP"
             HealthCheckPort: "traffic-port"
             HealthCheckProtocol: "HTTP"
@@ -624,7 +533,7 @@ Resources:
                 HttpCode: "200"
             HealthyThresholdCount: 5
             VpcId: !Ref EC2VPC
-            Name: !Sub "webaverse-${ECSCluster}-tg"
+            Name: !Sub "TG-${ServiceName}-${AWS::Region}"
             HealthCheckEnabled: true
             TargetGroupAttributes: 
               - 
@@ -653,27 +562,26 @@ Resources:
                 Value: "round_robin"
             Targets: 
               - 
-                Id: "172.31.81.233"
-                Port: 80
-                AvailabilityZone: !GetAtt EC2Subnet6.AvailabilityZone
+                Id: "10.10.32.254"
+                Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: !GetAtt EC2SubnetC.AvailabilityZone
 
     ECRRepository:
         Type: "AWS::ECR::Repository"
         Properties:
-            RepositoryName: "webaverse"
-            LifecyclePolicy: 
-                RegistryId: !Ref AWS::AccountId
+            RepositoryName: !Sub "ecrrepository-${ServiceName}-${AWS::Region}"
+            
 
     CodeBuildProject:
         Type: "AWS::CodeBuild::Project"
         Properties:
-            Name: !Sub "webaverse-${ECSCluster}"
+            Name: !Sub "CodeBuildProject-${ServiceName}-${AWS::Region}"
             Source: 
                 InsecureSsl: false
                 Type: "CODEPIPELINE"
             Artifacts: 
                 EncryptionDisabled: false
-                Name: !Sub "webaverse-${ECSCluster}"
+                Name: !Sub "CodeBuildProjectArtifacts-${ServiceName}-${AWS::Region}"
                 Packaging: "NONE"
                 Type: "CODEPIPELINE"
             Cache: 
@@ -693,7 +601,7 @@ Resources:
                 ImagePullCredentialsType: "CODEBUILD"
                 PrivilegedMode: true
                 Type: "LINUX_CONTAINER"
-            ServiceRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/codebuild-webaverse-${ECSCluster}-service-role"
+            ServiceRole: !Ref CodeBuildServiceRole
             TimeoutInMinutes: 60
             QueuedTimeoutInMinutes: 480
             EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
@@ -703,22 +611,22 @@ Resources:
                     Status: "DISABLED"
                 S3Logs: 
                     Status: "ENABLED"
-                    Location: !Sub "${S3Bucket2}/webaverse-${ECSCluster}-codebuild"
+                    Location: !Sub "${CodePipelineS3Bucket}/webaverse-${ServiceName}-codebuild"
                     EncryptionDisabled: false
             Visibility: "PRIVATE"
 
     CodeBuildSourceCredential:
         Type: "AWS::CodeBuild::SourceCredential"
         Properties:
-            AuthType: "OAUTH"
+            AuthType: "PERSONAL_ACCESS_TOKEN"
             ServerType: "GITHUB"
-            Token: "REPLACEME"
+            Token: 
+                Ref: GitHubPersonalAccessToken
 
     ECSCluster:
         Type: "AWS::ECS::Cluster"
         Properties:
-            ClusterName: 
-                Ref: ServiceName
+            ClusterName: !Sub "ECSCluster-${ServiceName}-${AWS::Region}"
             CapacityProviders: 
               - "FARGATE_SPOT"
               - "FARGATE"
@@ -726,13 +634,13 @@ Resources:
     ECSService:
         Type: "AWS::ECS::Service"
         Properties:
-            ServiceName: !Sub "webaverse-${ECSCluster}"
+            ServiceName: !Sub "ECSService-${ServiceName}-${AWS::Region}"
             Cluster: !GetAtt ECSCluster.Arn
             LoadBalancers: 
               - 
                 TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
-                ContainerName: !Sub "webaverse-${ECSCluster}"
-                ContainerPort: 80
+                ContainerName: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
+                ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
             DesiredCount: 1
             LaunchType: "FARGATE"
             PlatformVersion: "LATEST"
@@ -748,47 +656,31 @@ Resources:
                 AwsvpcConfiguration: 
                     AssignPublicIp: "DISABLED"
                     SecurityGroups: 
-                      - !Ref EC2SecurityGroup3
+                      - !Ref EC2SecurityGroup
                     Subnets: 
-                      - !Ref EC2Subnet6
-                      - !Ref EC2Subnet
+                      - !Ref EC2SubnetC
+                      - !Ref EC2SubnetA
             HealthCheckGracePeriodSeconds: 0
             SchedulingStrategy: "REPLICA"
 
-    S3Bucket:
+    CodePipelineS3Bucket:
         Type: "AWS::S3::Bucket"
         Properties:
-            BucketName: !Sub "alb-${ECSCluster}"
-
-    S3Bucket2:
-        Type: "AWS::S3::Bucket"
-        Properties:
-            BucketName: !Sub "codepipeline-${AWS::Region}-777902737697"
-
-    S3Bucket3:
-        Type: "AWS::S3::Bucket"
-        Properties:
-            BucketName: !Sub "cf-templates-1pnezlj5lqroc-${AWS::Region}"
-            BucketEncryption: 
-                ServerSideEncryptionConfiguration: 
-                  - 
-                    ServerSideEncryptionByDefault: 
-                        SSEAlgorithm: "AES256"
-                    BucketKeyEnabled: false
+            BucketName: !Sub "codepipeline-${ServiceName}-777902737697"
 
     CodeDeployApplication:
         Type: "AWS::CodeDeploy::Application"
         Properties:
-            ApplicationName: !Sub "webaverse-${ECSCluster}"
+            ApplicationName: !Sub "CodeDeployApplication-${ServiceName}-${AWS::Region}"
             ComputePlatform: "ECS"
 
     CodePipelinePipeline:
         Type: "AWS::CodePipeline::Pipeline"
         Properties:
-            Name: !Sub "webaverse-pipeline-${ECSCluster}"
-            RoleArn: !GetAtt IAMRole.Arn
+            Name: !Sub "CodePipeline-${ServiceName}-${AWS::Region}"
+            RoleArn: !GetAtt CodePipelineServiceRole.Arn
             ArtifactStore: 
-                Location: !Ref S3Bucket2
+                Location: !Ref CodePipelineS3Bucket
                 Type: "S3"
             Stages: 
               - 
@@ -845,7 +737,7 @@ Resources:
                         Version: "1"
                     Configuration: 
                         ClusterName: !Ref ECSCluster
-                        ServiceName: !Sub "webaverse-${ECSCluster}"
+                        ServiceName: !Ref ECSService
                     InputArtifacts: 
                       - 
                         Name: "BuildArtifact"
@@ -853,29 +745,17 @@ Resources:
                     Namespace: "DeployVariables"
                     RunOrder: 1
 
-    IAMRole4:
-        Type: "AWS::IAM::Role"
-        Properties:
-            Path: "/service-role/"
-            RoleName: !Sub "codebuild-webaverse-${ECSCluster}-service-role"
-            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codebuild.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
-            MaxSessionDuration: 3600
-            ManagedPolicyArns:
-              - !Ref IAMManagedPolicy4
-              - !Ref IAMManagedPolicy3 
-              - !Ref IAMManagedPolicy5
-
-    IAMRole6:
+    ECSAutoScaleRole:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/"
-            RoleName: "ecsAutoscaleRole"
+            RoleName: !Sub "ECSAutoscaleRole-${ServiceName}-${AWS::Region}"
             AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"application-autoscaling.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole"
 
-    IAMPolicy:
+    DockerHubSecretAccessPolicy:
         Type: "AWS::IAM::Policy"
         Properties:
             PolicyDocument: !Sub |
@@ -888,46 +768,34 @@ Resources:
                                 "secretsmanager:GetSecretValue"
                             ],
                             "Resource": [
-                                "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:dockerhub-*"
+                                "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DockerHub*"
                             ]
                         }
                     ]
                 }
             Roles: 
-              - !Ref IAMRole3
+              - !Ref CodeBuildServiceRole
             PolicyName: "dockerhub_secret_access"
 
-    IAMServiceLinkedRole:
-        Type: "AWS::IAM::ServiceLinkedRole"
-        Properties:
-            AWSServiceName: "ecs.application-autoscaling.amazonaws.com"
-
-    IAMServiceLinkedRole2:
-        Type: "AWS::IAM::ServiceLinkedRole"
-        Properties:
-            AWSServiceName: "elasticloadbalancing.amazonaws.com"
-            Description: "Allows ELB to call AWS services on your behalf."
-
-    IAMServiceLinkedRole3:
-        Type: "AWS::IAM::ServiceLinkedRole"
-        Properties:
-            AWSServiceName: "ecs.amazonaws.com"
-            Description: "Role to enable Amazon ECS to manage your cluster."
-
-    IAMServiceLinkedRole4:
-        Type: "AWS::IAM::ServiceLinkedRole"
-        Properties:
-            AWSServiceName: "globalaccelerator.amazonaws.com"
-            Description: "Allows Global Accelerator to call AWS services on customer's behalf"
-
-    IAMServiceLinkedRole5:
-        Type: "AWS::IAM::ServiceLinkedRole"
-        Properties:
-            AWSServiceName: "organizations.amazonaws.com"
-            Description: "Service-linked role used by AWS Organizations to enable integration of other AWS services with Organizations."
-
-    SecretsManagerSecret:
+    DockerHubSecretsManagerSecret:
         Type: "AWS::SecretsManager::Secret"
         Properties:
-            Name: "dockerhub"
+            Name: !Sub "DockerHubCredentialsSecret-${ServiceName}-${AWS::Region}"
             SecretString: '{"username":DockerHubCredentialsUsername,"password":DockerHubCredentialsPassword}'
+
+    GitHubPATSecretsManagerSecret:
+        Type: "AWS::SecretsManager::Secret"
+        Properties:
+            Name: !Sub "GitHubPATSecretsManagerSecret-${ServiceName}-${AWS::Region}"
+            SecretString: '{"personalaccesstoken":GitHubPersonalAccessToken}'
+
+    ECSTaskExecutionRole2:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/"
+            RoleName: !Sub "ECSTaskExecutionRole2-${ServiceName}-${AWS::Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
