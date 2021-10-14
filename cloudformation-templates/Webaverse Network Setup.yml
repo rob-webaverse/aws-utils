@@ -71,9 +71,10 @@ Resources:
               - "FARGATE_SPOT"
               - "FARGATE"
     Secrets:
-        Type: "AWS::Cloudformation::Stack"
-        Parameters:
-            DockerHubCredentialsUsername: DockerHubCredentialsUsername
-            DockerHubCredentialsPassword: DockerHubCredentialsPassword
-            GitHubPersonalAccessToken: GitHubPersonalAccessToken
-        TemplateURL: https://raw.githubusercontent.com/rob-webaverse/aws-utils/main/cloudformation-templates/Webaverse%20Secrets%20Setup.yml
+        Type: "AWS::CloudFormation::Stack"
+        Properties:
+            Parameters:
+                DockerHubCredentialsUsername: !Sub "${DockerHubCredentialsUsername}"
+                DockerHubCredentialsPassword: !Sub "${DockerHubCredentialsPassword}"
+                GitHubPersonalAccessToken: !Sub "${GitHubPersonalAccessToken}"
+            TemplateURL: https://rcc-cftemplates.s3.us-east-2.amazonaws.com/Webaverse+Secrets+Setup.yml
