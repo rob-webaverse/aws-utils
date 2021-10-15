@@ -12,110 +12,12 @@ Parameters:
     Type: String
     Default: https://github.com/rob-webaverse/app.git
     Description: Link to the git repo that contains the service
-  DockerHubCredentialsUsername:
-    Type: String
-    Default: username
-    Description: DockerHub username to pull down Docker images
-  DockerHubCredentialsPassword:
-    Type: String
-    NoEcho: true
-    Default: password
-    Description: DockerHub password to pull down Docker images
-  GitHubPersonalAccessToken:
-    Type: String
-    NoEcho: true
-    Default: password
-    Description: GitHub Personal Access Token to access changes to the repos
   ServiceContainerListeningPorts:
     Type: List<Number>
     Default: 80
     Description: Ports that the service is presenting and should thus be open to the container
 
 Resources:
-    CodeBuildSecretsManagerPolicy:
-        Type: "AWS::IAM::ManagedPolicy"
-        Properties:
-            ManagedPolicyName: !Sub "CodeBuildSecretsManagerPolicy-${ServiceName}-${AWS::Region}"
-            Path: "/service-role/"
-            PolicyDocument: !Sub |
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Action": [
-                                "secretsmanager:GetSecretValue"
-                            ],
-                            "Resource": [
-                                "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/CodeBuild/*"
-                            ]
-                        }
-                    ]
-                }
-
-    CodeBuildBasePolicy:
-        Type: "AWS::IAM::ManagedPolicy"
-        Properties:
-            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ServiceName}-${AWS::Region}"
-            Path: "/service-role/"
-            PolicyDocument: !Sub |
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Resource": [
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/",
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
-                            ],
-                            "Action": [
-                                "logs:CreateLogGroup",
-                                "logs:CreateLogStream",
-                                "logs:PutLogEvents"
-                            ]
-                        },
-                        {
-                            "Effect": "Allow",
-                            "Resource": [
-                                "arn:aws:s3:::codepipeline-${AWS::Region}*"
-                            ],
-                            "Action": [
-                                "s3:PutObject",
-                                "s3:GetObject",
-                                "s3:GetObjectVersion",
-                                "s3:GetBucketAcl",
-                                "s3:GetBucketLocation"
-                            ]
-                        },
-                        {
-                            "Effect": "Allow",
-                            "Resource": [
-                                "arn:aws:s3:::${CodePipelineS3Bucket}",
-                                "arn:aws:s3:::${CodePipelineS3Bucket}/*"
-                            ],
-                            "Action": [
-                                "s3:PutObject",
-                                "s3:GetBucketAcl",
-                                "s3:GetBucketLocation"
-                            ]
-                        },
-                        {
-                            "Effect": "Allow",
-                            "Action": [
-                                "codebuild:CreateReportGroup",
-                                "codebuild:CreateReport",
-                                "codebuild:UpdateReport",
-                                "codebuild:BatchPutTestCases",
-                                "codebuild:BatchPutCodeCoverages"
-                            ],
-                            "Resource": [
-                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*"
-                            ]
-                        }
-                    ]
-                }
-
-
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
@@ -425,76 +327,6 @@ Resources:
             Cpu: "256"
             Memory: "512"
 
-    CodeBuildServiceRole:
-        Type: "AWS::IAM::Role"
-        Properties:
-            Path: "/service-role/"
-            RoleName: !Sub "CodeBuildServiceRole-${ServiceName}-${AWS::Region}"
-            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codebuild.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
-            MaxSessionDuration: 3600
-            ManagedPolicyArns: 
-              - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-              - !Ref CodeBuildBasePolicy
-              - !Ref CodeBuildSecretsManagerPolicy
-
-    EC2VPC:
-        Type: "AWS::EC2::VPC"
-        Properties:
-            CidrBlock: "10.10.0.0/16"
-            EnableDnsSupport: true
-            EnableDnsHostnames: true
-            InstanceTenancy: "default"
-
-    EC2SubnetA:
-        Type: "AWS::EC2::Subnet"
-        Properties:
-            AvailabilityZone: !Sub "${AWS::Region}a"
-            CidrBlock: "10.10.0.0/20"
-            VpcId: !Ref EC2VPC
-            MapPublicIpOnLaunch: true
-            Tags: 
-            -   Key: "Service"
-                Value: !Sub "${ServiceName}" 
-            -   Key: "Name"
-                Value: !Sub "SubnetA"
-
-    EC2SubnetB:
-        Type: "AWS::EC2::Subnet"
-        Properties:
-            AvailabilityZone: !Sub "${AWS::Region}b"
-            CidrBlock: "10.10.16.0/20"
-            VpcId: !Ref EC2VPC
-            MapPublicIpOnLaunch: true
-            Tags: 
-            -   Key: "Service"
-                Value: !Sub "${ServiceName}" 
-            -   Key: "Name"
-                Value: !Sub "SubnetB"
-
-    EC2SubnetC:
-        Type: "AWS::EC2::Subnet"
-        Properties:
-            AvailabilityZone: !Sub "${AWS::Region}c"
-            CidrBlock: "10.10.32.0/20"
-            VpcId: !Ref EC2VPC
-            MapPublicIpOnLaunch: true
-            Tags: 
-            -   Key: "Service"
-                Value: !Sub "${ServiceName}" 
-            -   Key: "Name"
-                Value: !Sub "SubnetC"
-
-    EC2NetworkAcl:
-        Type: "AWS::EC2::NetworkAcl"
-        Properties:
-            VpcId: !Ref EC2VPC
-
-    EC2RouteTable:
-        Type: "AWS::EC2::RouteTable"
-        Properties:
-            VpcId: !Ref EC2VPC
-
- 
     EC2SecurityGroup:
         Type: "AWS::EC2::SecurityGroup"
         Properties:
@@ -623,14 +455,6 @@ Resources:
             Token: 
                 Ref: GitHubPersonalAccessToken
 
-    ECSCluster:
-        Type: "AWS::ECS::Cluster"
-        Properties:
-            ClusterName: !Sub "ECSCluster-${ServiceName}-${AWS::Region}"
-            CapacityProviders: 
-              - "FARGATE_SPOT"
-              - "FARGATE"
-
     ECSService:
         Type: "AWS::ECS::Service"
         Properties:
@@ -754,40 +578,6 @@ Resources:
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole"
-
-    DockerHubSecretAccessPolicy:
-        Type: "AWS::IAM::Policy"
-        Properties:
-            PolicyDocument: !Sub |
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Action": [
-                                "secretsmanager:GetSecretValue"
-                            ],
-                            "Resource": [
-                                "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DockerHub*"
-                            ]
-                        }
-                    ]
-                }
-            Roles: 
-              - !Ref CodeBuildServiceRole
-            PolicyName: "dockerhub_secret_access"
-
-    DockerHubSecretsManagerSecret:
-        Type: "AWS::SecretsManager::Secret"
-        Properties:
-            Name: !Sub "DockerHubCredentialsSecret-${ServiceName}-${AWS::Region}"
-            SecretString: '{"username":DockerHubCredentialsUsername,"password":DockerHubCredentialsPassword}'
-
-    GitHubPATSecretsManagerSecret:
-        Type: "AWS::SecretsManager::Secret"
-        Properties:
-            Name: !Sub "GitHubPATSecretsManagerSecret-${ServiceName}-${AWS::Region}"
-            SecretString: '{"personalaccesstoken":GitHubPersonalAccessToken}'
 
     ECSTaskExecutionRole2:
         Type: "AWS::IAM::Role"

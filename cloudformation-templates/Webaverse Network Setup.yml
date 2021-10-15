@@ -3,21 +3,6 @@ Metadata:
     Generator: "former2"
 Description: "Webaverse Service Network"
 
-Parameters:
-    DockerHubCredentialsUsername:
-        Type: String
-        Default: username
-        Description: DockerHub username to pull down Docker images
-    DockerHubCredentialsPassword:
-        Type: String
-        NoEcho: true
-        Default: password
-        Description: DockerHub password to pull down Docker images
-    GitHubPersonalAccessToken:
-        Type: String
-        NoEcho: true
-        Default: password
-        Description: GitHub Personal Access Token to access changes to the repos
 Resources:
     EC2VPC:
         Type: "AWS::EC2::VPC"
@@ -70,11 +55,46 @@ Resources:
             CapacityProviders: 
               - "FARGATE_SPOT"
               - "FARGATE"
-    Secrets:
-        Type: "AWS::CloudFormation::Stack"
-        Properties:
-            Parameters:
-                DockerHubCredentialsUsername: !Sub "${DockerHubCredentialsUsername}"
-                DockerHubCredentialsPassword: !Sub "${DockerHubCredentialsPassword}"
-                GitHubPersonalAccessToken: !Sub "${GitHubPersonalAccessToken}"
-            TemplateURL: https://rcc-cftemplates.s3.us-east-2.amazonaws.com/Webaverse+Secrets+Setup.yml
+Outputs:
+    StackVPC:
+        Description: The ID of the stack VPC
+        Value: !Ref EC2VPC
+        Export:
+            Name: !Sub "${AWS::StackName}-VPCID"
+    StackSubnetA:
+        Description: The ID of the stack SubnetA
+        Value: !Ref EC2SubnetA
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetA"
+    StackSubnetAAZ:
+        Description: The AvailabilityZone of the stack SubnetA
+        Value: !GetAtt EC2SubnetA.AvailabilityZone
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetA-AZ"
+    StackSubnetB:
+        Description: The ID of the stack SubnetB
+        Value: !Ref EC2SubnetB
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetB"
+    StackSubnetBAZ:
+        Description: The AvailabilityZone of the stack SubnetB
+        Value: !GetAtt EC2SubnetB.AvailabilityZone
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetB-AZ"
+    StackSubnetC:
+        Description: The ID of the stack SubnetC
+        Value: !Ref EC2SubnetC
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetC"
+    StackSubnetCAZ:
+        Description: The AvailabilityZone of the stack SubnetC
+        Value: !GetAtt EC2SubnetC.AvailabilityZone
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetC-AZ"
+    StackECSCluster:
+        Description: The ID of the stack ECSCluster
+        Value: !Ref ECSCluster
+        Export:
+            Name: !Sub "${AWS::StackName}-ECSCluster"
+    
+        
