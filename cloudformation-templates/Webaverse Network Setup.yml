@@ -14,7 +14,59 @@ Resources:
             Tags:
             -   Key: "Name"
                 Value: !Sub "Webaverse-Services"
-
+    EC2VPCIGW:
+        Type: AWS::EC2::InternetGateway
+        Properties:
+            Tags:
+            -   Key: "Name"
+                Value: "Webaverse-Services"
+    EC2VPCNGW:
+        Type: AWS::EC2::NatGateway
+        Properties:
+            AllocationId:
+                Fn::GetAtt:
+                - EIP
+                - AllocationId
+            SubnetId: !Ref EC2SubnetB
+            Tags:
+            -   Key: "Name"
+                Value: "Webaverse-Services"
+    EIP:
+        DependsOn: AttachVPCIGW
+        Type: AWS::EC2::EIP
+        Properties:
+            Domain: vpc
+    AttachVPCIGW:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties: 
+            InternetGatewayId: !Ref EC2VPCIGW
+            VpcId: !Ref EC2VPC
+    RouteTablePrivate:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref EC2VPC
+            Tags:
+            -   Key: "Name"
+                Value: "Webaverse-Services-Private"
+    RouteTablePublic:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref EC2VPC
+            Tags:
+            -   Key: "Name"
+                Value: "Webaverse-Services-Public"
+    RouteToInternetPrivate:
+        Type: AWS::EC2::Route
+        Properties:
+            RouteTableId: !Ref RouteTablePrivate
+            DestinationCidrBlock: 0.0.0.0/0
+            NatGatewayId: !Ref EC2VPCNGW
+    RouteToInternetPublic:
+        Type: AWS::EC2::Route
+        Properties:
+            RouteTableId: !Ref RouteTablePublic
+            DestinationCidrBlock: 0.0.0.0/0
+            GatewayId: !Ref EC2VPCIGW
     EC2SubnetA:
         Type: "AWS::EC2::Subnet"
         Properties:
@@ -25,7 +77,13 @@ Resources:
             Tags: 
             -   Key: "Name"
                 Value: !Sub "Webaverse-Services-SubnetA"
-
+            -   Key: "Access"
+                Value: !Sub "Private"
+    SubnetRouteTableAssociationA:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetA
+            RouteTableId: !Ref RouteTablePrivate
     EC2SubnetB:
         Type: "AWS::EC2::Subnet"
         Properties:
@@ -36,7 +94,14 @@ Resources:
             Tags: 
             -   Key: "Name"
                 Value: !Sub "Webaverse-Services-SubnetB"
+            -   Key: "Access"
+                Value: !Sub "Public"
 
+    SubnetRouteTableAssociationB:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetB
+            RouteTableId: !Ref RouteTablePublic
     EC2SubnetC:
         Type: "AWS::EC2::Subnet"
         Properties:
@@ -47,7 +112,32 @@ Resources:
             Tags:
             -   Key: "Name"
                 Value: !Sub "Webaverse-Services-SubnetC"
+            -   Key: "Access"
+                Value: !Sub "Private"
 
+    SubnetRouteTableAssociationC:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetC
+            RouteTableId: !Ref RouteTablePrivate
+    EC2SubnetD:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}b"
+            CidrBlock: "10.10.48.0/20"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: true
+            Tags:
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetD"
+            -   Key: "Access"
+                Value: !Sub "Public"
+
+    SubnetRouteTableAssociationD:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetD
+            RouteTableId: !Ref RouteTablePublic
     ECSCluster:
         Type: "AWS::ECS::Cluster"
         Properties:
@@ -91,10 +181,25 @@ Outputs:
         Value: !GetAtt EC2SubnetC.AvailabilityZone
         Export:
             Name: !Sub "${AWS::StackName}-EC2SubnetC-AZ"
+    StackSubnetD:
+        Description: The ID of the stack SubnetD
+        Value: !Ref EC2SubnetD
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetD"
+    StackSubnetDAZ:
+        Description: The AvailabilityZone of the stack SubnetD
+        Value: !GetAtt EC2SubnetD.AvailabilityZone
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetD-AZ"
     StackECSCluster:
-        Description: The ID of the stack ECSCluster
+        Description: The Name of the stack ECSCluster
         Value: !Ref ECSCluster
         Export:
             Name: !Sub "${AWS::StackName}-ECSCluster"
+    StackECSClusterArn:
+        Description: The ID of the stack ECSCluster
+        Value: !GetAtt ECSCluster.Arn
+        Export:
+            Name: !Sub "${AWS::StackName}-ECSClusterArn"
     
         

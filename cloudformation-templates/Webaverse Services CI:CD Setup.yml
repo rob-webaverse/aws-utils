@@ -16,7 +16,17 @@ Parameters:
     Type: List<Number>
     Default: 80
     Description: Ports that the service is presenting and should thus be open to the container
-
+  GitHubConnectionArn:
+    Type: String
+    Default: empty
+  GitBranchName:
+    Description: GitHub branch name
+    Type: String
+    Default: master
+  GitRepositoryName:
+    Description: GitHub repository name
+    Type: String
+    Default: test
 Resources:
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
@@ -98,9 +108,9 @@ Resources:
                                 "s3:GetObjectVersion"
                             ],
                             "Resource": [
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ECSCluster}",
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ECSCluster}:*",
-                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ECSCluster}*",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}:*",
+                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ServiceName}*",
                                 "arn:aws:s3:::codepipeline-${AWS::Region}-*"
                             ]
                         }
@@ -299,21 +309,25 @@ Resources:
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
               - !Ref CodePipelineManagedPolicy
-
+    ECSLogGroup: 
+        Type: AWS::Logs::LogGroup
+        Properties: 
+            LogGroupName: !Sub "ecs-${ServiceName}"
+            RetentionInDays: 7
     ECSTaskDefinition:
         Type: "AWS::ECS::TaskDefinition"
         Properties:
             ContainerDefinitions: 
               - 
                 Essential: true
-                Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/webaverse:latest"
+                Image: amazon/amazon-ecs-sample
                 LogConfiguration: 
                     LogDriver: "awslogs"
                     Options: 
-                        awslogs-group: !Sub "/ecs/run_webaverse_${ServiceName}"
+                        awslogs-group: !Ref ECSLogGroup
                         awslogs-region: !Ref AWS::Region
                         awslogs-stream-prefix: "ecs"
-                Name: !Sub "webaverse-${ServiceName}"
+                Name: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
                 PortMappings: 
                   - 
                     ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
@@ -332,7 +346,8 @@ Resources:
         Properties:
             GroupDescription: !Sub "Allows access to ${ServiceName} from anywhere"
             GroupName: !Sub "SecurityGroup-${ServiceName}-${AWS::Region}"
-            VpcId: !Ref EC2VPC
+            VpcId: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
             SecurityGroupIngress: 
               - 
                 CidrIp: "0.0.0.0/0"
@@ -364,7 +379,8 @@ Resources:
             Matcher: 
                 HttpCode: "200"
             HealthyThresholdCount: 5
-            VpcId: !Ref EC2VPC
+            VpcId: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
             Name: !Sub "TG-${ServiceName}-${AWS::Region}"
             HealthCheckEnabled: true
             TargetGroupAttributes: 
@@ -396,7 +412,8 @@ Resources:
               - 
                 Id: "10.10.32.254"
                 Port: !Select [0, !Ref ServiceContainerListeningPorts]
-                AvailabilityZone: !GetAtt EC2SubnetC.AvailabilityZone
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-AZ"
 
     ECRRepository:
         Type: "AWS::ECR::Repository"
@@ -433,7 +450,8 @@ Resources:
                 ImagePullCredentialsType: "CODEBUILD"
                 PrivilegedMode: true
                 Type: "LINUX_CONTAINER"
-            ServiceRole: !Ref CodeBuildServiceRole
+            ServiceRole: 
+                "Fn::ImportValue": "Webaverse-Secrets-Deployment-CodeBuildServiceRole"
             TimeoutInMinutes: 60
             QueuedTimeoutInMinutes: 480
             EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
@@ -447,19 +465,13 @@ Resources:
                     EncryptionDisabled: false
             Visibility: "PRIVATE"
 
-    CodeBuildSourceCredential:
-        Type: "AWS::CodeBuild::SourceCredential"
-        Properties:
-            AuthType: "PERSONAL_ACCESS_TOKEN"
-            ServerType: "GITHUB"
-            Token: 
-                Ref: GitHubPersonalAccessToken
-
     ECSService:
         Type: "AWS::ECS::Service"
+        DependsOn: ElasticLoadBalancerListener
         Properties:
             ServiceName: !Sub "ECSService-${ServiceName}-${AWS::Region}"
-            Cluster: !GetAtt ECSCluster.Arn
+            Cluster: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-ECSClusterArn"
             LoadBalancers: 
               - 
                 TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
@@ -475,15 +487,14 @@ Resources:
                 DeploymentCircuitBreaker: 
                     Enable: false
                     Rollback: false
-            Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS"
             NetworkConfiguration: 
                 AwsvpcConfiguration: 
                     AssignPublicIp: "DISABLED"
                     SecurityGroups: 
                       - !Ref EC2SecurityGroup
                     Subnets: 
-                      - !Ref EC2SubnetC
-                      - !Ref EC2SubnetA
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC"
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA"
             HealthCheckGracePeriodSeconds: 0
             SchedulingStrategy: "REPLICA"
 
@@ -497,7 +508,6 @@ Resources:
         Properties:
             ApplicationName: !Sub "CodeDeployApplication-${ServiceName}-${AWS::Region}"
             ComputePlatform: "ECS"
-
     CodePipelinePipeline:
         Type: "AWS::CodePipeline::Pipeline"
         Properties:
@@ -518,9 +528,9 @@ Resources:
                         Provider: "CodeStarSourceConnection"
                         Version: "1"
                     Configuration: 
-                        BranchName: "master"
-                        ConnectionArn: !Sub "arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/402e86c8-09ba-42fb-8254-8c3a6e5a1994"
-                        FullRepositoryId: !Sub "webaverse/${ECSCluster}"
+                        BranchName: !Ref GitBranchName
+                        ConnectionArn: !Ref GitHubConnectionArn
+                        FullRepositoryId: !Ref GitRepositoryName
                         OutputArtifactFormat: "CODE_ZIP"
                     OutputArtifacts: 
                       - 
@@ -560,7 +570,8 @@ Resources:
                         Provider: "ECS"
                         Version: "1"
                     Configuration: 
-                        ClusterName: !Ref ECSCluster
+                        ClusterName: 
+                            "Fn::ImportValue": "Webaverse-Network-Deployment-ECSCluster"
                         ServiceName: !Ref ECSService
                     InputArtifacts: 
                       - 
@@ -588,4 +599,23 @@ Resources:
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    ElasticLoadBalancer:
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties: 
+            IpAddressType: 'ipv4'
+            Name: !Sub "ELB-${ServiceName}-${AWS::Region}"
+            SecurityGroups: 
+                - !Ref EC2SecurityGroup
+            Subnets: 
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC"
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA"
+    ElasticLoadBalancerListener:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties: 
+            DefaultActions: 
+                -   Type: "forward"
+                    TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
+            LoadBalancerArn: !Ref ElasticLoadBalancer
+            Port: !Select [0, !Ref ServiceContainerListeningPorts]
+            Protocol: HTTP
 
