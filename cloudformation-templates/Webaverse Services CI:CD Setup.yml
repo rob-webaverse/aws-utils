@@ -16,6 +16,14 @@ Parameters:
     Type: List<Number>
     Default: 80
     Description: Ports that the service is presenting and should thus be open to the container
+  ServiceContainerCPUSize:
+    Type: String
+    Default: 256
+    Description: Ports that the service is presenting and should thus be open to the container
+  ServiceContainerRAMSize:
+    Type: String
+    Default: 512
+    Description: Ports that the service is presenting and should thus be open to the container
   GitHubConnectionArn:
     Type: String
     Default: empty
@@ -111,7 +119,7 @@ Resources:
                                 "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}",
                                 "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}:*",
                                 "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ServiceName}*",
-                                "arn:aws:s3:::codepipeline-${AWS::Region}-*"
+                                "arn:aws:s3:::codepipeline-${ServiceName}-${AWS::Region}-*"
                             ]
                         }
                     ]
@@ -338,8 +346,8 @@ Resources:
             NetworkMode: "awsvpc"
             RequiresCompatibilities: 
               - "FARGATE"
-            Cpu: "256"
-            Memory: "512"
+            Cpu: !Ref ServiceContainerCPUSize
+            Memory: !Ref ServiceContainerRAMSize
 
     EC2SecurityGroup:
         Type: "AWS::EC2::SecurityGroup"
@@ -441,11 +449,15 @@ Resources:
                   - 
                     Name: "DOCKERHUB_USERNAME"
                     Type: "SECRETS_MANAGER"
-                    Value: "dockerhub:username"
+                    Value: !Sub
+                        -   "${secret}:username"
+                        -   { secret: !ImportValue "Webaverse-Secrets-Deployment-DockerHubSecretName"}
                   - 
                     Name: "DOCKERHUB_PASSWORD"
                     Type: "SECRETS_MANAGER"
-                    Value: "dockerhub:password"
+                    Value: !Sub
+                        -   "${secret}:password"
+                        -   { secret: !ImportValue "Webaverse-Secrets-Deployment-DockerHubSecretName"}
                 Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
                 ImagePullCredentialsType: "CODEBUILD"
                 PrivilegedMode: true
@@ -501,7 +513,7 @@ Resources:
     CodePipelineS3Bucket:
         Type: "AWS::S3::Bucket"
         Properties:
-            BucketName: !Sub "codepipeline-${ServiceName}-777902737697"
+            BucketName: !Sub "codepipeline-${ServiceName}-${AWS::Region}"
 
     CodeDeployApplication:
         Type: "AWS::CodeDeploy::Application"
