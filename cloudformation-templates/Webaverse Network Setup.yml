@@ -78,12 +78,12 @@ Resources:
             -   Key: "Name"
                 Value: !Sub "Webaverse-Services-SubnetA"
             -   Key: "Access"
-                Value: !Sub "Private"
+                Value: !Sub "Public"
     SubnetRouteTableAssociationA:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
             SubnetId: !Ref EC2SubnetA
-            RouteTableId: !Ref RouteTablePrivate
+            RouteTableId: !Ref RouteTablePublic
     EC2SubnetB:
         Type: "AWS::EC2::Subnet"
         Properties:
@@ -113,13 +113,13 @@ Resources:
             -   Key: "Name"
                 Value: !Sub "Webaverse-Services-SubnetC"
             -   Key: "Access"
-                Value: !Sub "Private"
+                Value: !Sub "Public"
 
     SubnetRouteTableAssociationC:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
             SubnetId: !Ref EC2SubnetC
-            RouteTableId: !Ref RouteTablePrivate
+            RouteTableId: !Ref RouteTablePublic
     EC2SubnetD:
         Type: "AWS::EC2::Subnet"
         Properties:

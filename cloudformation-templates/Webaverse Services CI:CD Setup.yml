@@ -24,6 +24,10 @@ Parameters:
     Type: String
     Default: 512
     Description: Ports that the service is presenting and should thus be open to the container
+  ServiceTargetGroupHealthCheckPath:
+    Type: String
+    Default: "/"
+    Description: Ports that the service is presenting and should thus be open to the container
   GitHubConnectionArn:
     Type: String
     Default: empty
@@ -376,7 +380,7 @@ Resources:
         Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
         Properties:
             HealthCheckIntervalSeconds: 30
-            HealthCheckPath: "/"
+            HealthCheckPath: !Ref ServiceTargetGroupHealthCheckPath
             Port: !Select [0, !Ref ServiceContainerListeningPorts]
             Protocol: "HTTP"
             HealthCheckPort: "traffic-port"
