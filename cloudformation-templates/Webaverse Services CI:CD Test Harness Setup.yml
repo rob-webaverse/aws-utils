@@ -39,6 +39,10 @@ Parameters:
     Description: GitHub repository name
     Type: String
     Default: test
+  ECSDesiredCount:
+    Description: ECS Desired Count
+    Type: Number
+    Default: 1
 Resources:
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
@@ -376,61 +380,10 @@ Resources:
                 CidrIp: "0.0.0.0/0"
                 IpProtocol: "-1"
 
-    ElasticLoadBalancingV2TargetGroup:
-        Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
-        Properties:
-            HealthCheckIntervalSeconds: 30
-            HealthCheckPath: !Ref ServiceTargetGroupHealthCheckPath
-            Port: !Select [0, !Ref ServiceContainerListeningPorts]
-            Protocol: "HTTP"
-            HealthCheckPort: "traffic-port"
-            HealthCheckProtocol: "HTTP"
-            HealthCheckTimeoutSeconds: 5
-            UnhealthyThresholdCount: 2
-            TargetType: "ip"
-            Matcher: 
-                HttpCode: "200"
-            HealthyThresholdCount: 5
-            VpcId: 
-                "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
-            Name: !Sub "TG-${ServiceName}-TestHarness-${AWS::Region}"
-            HealthCheckEnabled: true
-            TargetGroupAttributes: 
-              - 
-                Key: "stickiness.enabled"
-                Value: "false"
-              - 
-                Key: "deregistration_delay.timeout_seconds"
-                Value: "300"
-              - 
-                Key: "stickiness.app_cookie.cookie_name"
-                Value: ""
-              - 
-                Key: "stickiness.type"
-                Value: "lb_cookie"
-              - 
-                Key: "stickiness.lb_cookie.duration_seconds"
-                Value: "86400"
-              - 
-                Key: "slow_start.duration_seconds"
-                Value: "0"
-              - 
-                Key: "stickiness.app_cookie.duration_seconds"
-                Value: "86400"
-              - 
-                Key: "load_balancing.algorithm.type"
-                Value: "round_robin"
-            Targets: 
-              - 
-                Id: "10.10.32.254"
-                Port: !Select [0, !Ref ServiceContainerListeningPorts]
-                AvailabilityZone: 
-                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-AZ"
-
     ECRRepository:
         Type: "AWS::ECR::Repository"
         Properties:
-            RepositoryName: !Sub "ecrrepository-${ServiceName}-TestHarness-${AWS::Region}"
+            RepositoryName: !Sub "ecrrepository-${ServiceName}-testharness-${AWS::Region}"
             
 
     CodeBuildProject:
@@ -483,12 +436,11 @@ Resources:
 
     ECSService:
         Type: "AWS::ECS::Service"
-        DependsOn: ElasticLoadBalancerListener
         Properties:
             ServiceName: !Sub "ECSService-${ServiceName}-TestHarness-${AWS::Region}"
             Cluster: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-ECSClusterArn"
-            DesiredCount: 1
+            DesiredCount: !Ref ECSDesiredCount
             LaunchType: "FARGATE"
             PlatformVersion: "LATEST"
             TaskDefinition: !Ref ECSTaskDefinition
@@ -506,13 +458,12 @@ Resources:
                     Subnets: 
                       - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC"
                       - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA"
-            HealthCheckGracePeriodSeconds: 0
             SchedulingStrategy: "REPLICA"
 
     CodePipelineS3Bucket:
         Type: "AWS::S3::Bucket"
         Properties:
-            BucketName: !Sub "codepipeline-${ServiceName}-TestHarness-${AWS::Region}"
+            BucketName: !Sub "codepipeline-${ServiceName}-testharness-${AWS::Region}"
 
     CodeDeployApplication:
         Type: "AWS::CodeDeploy::Application"
@@ -610,13 +561,4 @@ Resources:
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-    
-        Type: AWS::ElasticLoadBalancingV2::Listener
-        Properties: 
-            DefaultActions: 
-                -   Type: "forward"
-                    TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
-            LoadBalancerArn: !Ref ElasticLoadBalancer
-            Port: !Select [0, !Ref ServiceContainerListeningPorts]
-            Protocol: HTTP
 
