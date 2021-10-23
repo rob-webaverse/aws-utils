@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Metadata:
     Generator: "former2"
-Description: "Webaverse Service Containerization"
+Description: "Webaverse Service Container Test Harness"
 
 Parameters:
   ServiceName:
@@ -43,7 +43,7 @@ Resources:
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodeBuildImageRepositoryPolicy-${ServiceName}-${AWS::Region}"
+            ManagedPolicyName: !Sub "CodeBuildImageRepositoryPolicy-${ServiceName}-TestHarness-${AWS::Region}"
             Path: "/service-role/"
             PolicyDocument: !Sub |
                 {
@@ -67,7 +67,7 @@ Resources:
                                 "ecr:UploadLayerPart",
                                 "ecr:CompleteLayerUpload"
                             ],
-                            "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/ecrrepository-${ServiceName}-${AWS::Region}"
+                            "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/ecrrepository-${ServiceName}-TestHarness-${AWS::Region}"
                         }
                     ]
                 }
@@ -75,7 +75,7 @@ Resources:
     CodeBuildBasePolicy2:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ServiceName}-${AWS::Region}2"
+            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ServiceName}-TestHarness-${AWS::Region}2"
             Path: "/service-role/"
             PolicyDocument: !Sub |
                 {
@@ -120,10 +120,10 @@ Resources:
                                 "s3:GetObjectVersion"
                             ],
                             "Resource": [
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}",
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}:*",
-                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ServiceName}*",
-                                "arn:aws:s3:::codepipeline-${ServiceName}-${AWS::Region}-*"
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}-TestHarness",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}-TestHarness:*",
+                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ServiceName}-TestHarness*",
+                                "arn:aws:s3:::codepipeline-${ServiceName}-TestHarness-${AWS::Region}-*"
                             ]
                         }
                     ]
@@ -133,7 +133,7 @@ Resources:
     CodePipelineManagedPolicy:
         Type: "AWS::IAM::ManagedPolicy"
         Properties:
-            ManagedPolicyName: !Sub "CodePipelineManagedPolicy-${ServiceName}-${AWS::Region}"
+            ManagedPolicyName: !Sub "CodePipelineManagedPolicy-${ServiceName}-TestHarness-${AWS::Region}"
             Path: "/service-role/"
             PolicyDocument: |
                 {
@@ -315,7 +315,7 @@ Resources:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/service-role/"
-            RoleName: !Sub "CodePipelineServiceRole-${ServiceName}-${AWS::Region}"
+            RoleName: !Sub "CodePipelineServiceRole-${ServiceName}-TestHarness-${AWS::Region}"
             AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codepipeline.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
@@ -324,7 +324,7 @@ Resources:
     ECSLogGroup: 
         Type: AWS::Logs::LogGroup
         Properties: 
-            LogGroupName: !Sub "ecs-${ServiceName}"
+            LogGroupName: !Sub "ecs-${ServiceName}-TestHarness"
             RetentionInDays: 7
     ECSTaskDefinition:
         Type: "AWS::ECS::TaskDefinition"
@@ -339,13 +339,13 @@ Resources:
                         awslogs-group: !Ref ECSLogGroup
                         awslogs-region: !Ref AWS::Region
                         awslogs-stream-prefix: "ecs"
-                Name: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
+                Name: !Sub "ECSContainer-${ServiceName}-TestHarness-${AWS::Region}"
                 PortMappings: 
                   - 
                     ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
                     HostPort: !Select [0, !Ref ServiceContainerListeningPorts]
                     Protocol: "tcp"
-            Family: !Sub "run_webaverse_${ServiceName}"
+            Family: !Sub "run_webaverse_${ServiceName}-TestHarness"
             ExecutionRoleArn: !GetAtt ECSTaskExecutionRole2.Arn
             NetworkMode: "awsvpc"
             RequiresCompatibilities: 
@@ -356,8 +356,8 @@ Resources:
     EC2SecurityGroup:
         Type: "AWS::EC2::SecurityGroup"
         Properties:
-            GroupDescription: !Sub "Allows access to ${ServiceName} from anywhere"
-            GroupName: !Sub "SecurityGroup-${ServiceName}-${AWS::Region}"
+            GroupDescription: !Sub "Allows access to ${ServiceName}-TestHarness from anywhere"
+            GroupName: !Sub "SecurityGroup-${ServiceName}-TestHarness-${AWS::Region}"
             VpcId: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
             SecurityGroupIngress: 
@@ -393,7 +393,7 @@ Resources:
             HealthyThresholdCount: 5
             VpcId: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
-            Name: !Sub "TG-${ServiceName}-${AWS::Region}"
+            Name: !Sub "TG-${ServiceName}-TestHarness-${AWS::Region}"
             HealthCheckEnabled: true
             TargetGroupAttributes: 
               - 
@@ -430,19 +430,19 @@ Resources:
     ECRRepository:
         Type: "AWS::ECR::Repository"
         Properties:
-            RepositoryName: !Sub "ecrrepository-${ServiceName}-${AWS::Region}"
+            RepositoryName: !Sub "ecrrepository-${ServiceName}-TestHarness-${AWS::Region}"
             
 
     CodeBuildProject:
         Type: "AWS::CodeBuild::Project"
         Properties:
-            Name: !Sub "CodeBuildProject-${ServiceName}-${AWS::Region}"
+            Name: !Sub "CodeBuildProject-${ServiceName}-TestHarness-${AWS::Region}"
             Source: 
                 InsecureSsl: false
                 Type: "CODEPIPELINE"
             Artifacts: 
                 EncryptionDisabled: false
-                Name: !Sub "CodeBuildProjectArtifacts-${ServiceName}-${AWS::Region}"
+                Name: !Sub "CodeBuildProjectArtifacts-${ServiceName}-TestHarness-${AWS::Region}"
                 Packaging: "NONE"
                 Type: "CODEPIPELINE"
             Cache: 
@@ -477,7 +477,7 @@ Resources:
                     Status: "DISABLED"
                 S3Logs: 
                     Status: "ENABLED"
-                    Location: !Sub "${CodePipelineS3Bucket}/webaverse-${ServiceName}-codebuild"
+                    Location: !Sub "${CodePipelineS3Bucket}/webaverse-${ServiceName}-TestHarness-codebuild"
                     EncryptionDisabled: false
             Visibility: "PRIVATE"
 
@@ -485,14 +485,9 @@ Resources:
         Type: "AWS::ECS::Service"
         DependsOn: ElasticLoadBalancerListener
         Properties:
-            ServiceName: !Sub "ECSService-${ServiceName}-${AWS::Region}"
+            ServiceName: !Sub "ECSService-${ServiceName}-TestHarness-${AWS::Region}"
             Cluster: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-ECSClusterArn"
-            LoadBalancers: 
-              - 
-                TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
-                ContainerName: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
-                ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
             DesiredCount: 1
             LaunchType: "FARGATE"
             PlatformVersion: "LATEST"
@@ -517,17 +512,17 @@ Resources:
     CodePipelineS3Bucket:
         Type: "AWS::S3::Bucket"
         Properties:
-            BucketName: !Sub "codepipeline-${ServiceName}-${AWS::Region}"
+            BucketName: !Sub "codepipeline-${ServiceName}-TestHarness-${AWS::Region}"
 
     CodeDeployApplication:
         Type: "AWS::CodeDeploy::Application"
         Properties:
-            ApplicationName: !Sub "CodeDeployApplication-${ServiceName}-${AWS::Region}"
+            ApplicationName: !Sub "CodeDeployApplication-${ServiceName}-TestHarness-${AWS::Region}"
             ComputePlatform: "ECS"
     CodePipelinePipeline:
         Type: "AWS::CodePipeline::Pipeline"
         Properties:
-            Name: !Sub "CodePipeline-${ServiceName}-${AWS::Region}"
+            Name: !Sub "CodePipeline-${ServiceName}-TestHarness-${AWS::Region}"
             RoleArn: !GetAtt CodePipelineServiceRole.Arn
             ArtifactStore: 
                 Location: !Ref CodePipelineS3Bucket
@@ -600,7 +595,7 @@ Resources:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/"
-            RoleName: !Sub "ECSAutoscaleRole-${ServiceName}-${AWS::Region}"
+            RoleName: !Sub "ECSAutoscaleRole-${ServiceName}-TestHarness-${AWS::Region}"
             AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"application-autoscaling.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
@@ -610,22 +605,12 @@ Resources:
         Type: "AWS::IAM::Role"
         Properties:
             Path: "/"
-            RoleName: !Sub "ECSTaskExecutionRole2-${ServiceName}-${AWS::Region}"
+            RoleName: !Sub "ECSTaskExecutionRole2-${ServiceName}-TestHarness-${AWS::Region}"
             AssumeRolePolicyDocument: "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
             MaxSessionDuration: 3600
             ManagedPolicyArns: 
               - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-    ElasticLoadBalancer:
-        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-        Properties: 
-            IpAddressType: 'ipv4'
-            Name: !Sub "ELB-${ServiceName}-${AWS::Region}"
-            SecurityGroups: 
-                - !Ref EC2SecurityGroup
-            Subnets: 
-                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC"
-                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA"
-    ElasticLoadBalancerListener:
+    
         Type: AWS::ElasticLoadBalancingV2::Listener
         Properties: 
             DefaultActions: 
