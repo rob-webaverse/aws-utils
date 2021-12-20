@@ -330,6 +330,11 @@ Resources:
         Properties: 
             LogGroupName: !Sub "ecs-${ServiceName}"
             RetentionInDays: 7
+    CodeBuildLogGroup: 
+        Type: AWS::Logs::LogGroup
+        Properties: 
+            LogGroupName: !Sub "codebuild-${ServiceName}"
+            RetentionInDays: 7
     ECSTaskDefinition:
         Type: "AWS::ECS::TaskDefinition"
         Properties:
@@ -386,9 +391,9 @@ Resources:
             HealthCheckIntervalSeconds: 30
             HealthCheckPath: !Ref ServiceTargetGroupHealthCheckPath
             Port: !Select [0, !Ref ServiceContainerListeningPorts]
-            Protocol: "HTTP"
+            Protocol: "HTTPS"
             HealthCheckPort: "traffic-port"
-            HealthCheckProtocol: "HTTP"
+            HealthCheckProtocol: "HTTPS"
             HealthCheckTimeoutSeconds: 5
             UnhealthyThresholdCount: 2
             TargetType: "ip"
@@ -482,7 +487,8 @@ Resources:
             BadgeEnabled: false
             LogsConfig: 
                 CloudWatchLogs: 
-                    Status: "DISABLED"
+                    Status: "ENABLED"
+                    GroupName: !Ref CodeBuildLogGroup
                 S3Logs: 
                     Status: "ENABLED"
                     Location: !Sub "${CodePipelineS3Bucket}/webaverse-${ServiceName}-codebuild"
@@ -555,7 +561,7 @@ Resources:
                         BranchName: !Ref GitBranchName
                         ConnectionArn: !Ref GitHubConnectionArn
                         FullRepositoryId: !Ref GitRepositoryName
-                        OutputArtifactFormat: "CODE_ZIP"
+                        OutputArtifactFormat: "CODEBUILD_CLONE_REF"
                     OutputArtifacts: 
                       - 
                         Name: "SourceArtifact"
@@ -641,5 +647,6 @@ Resources:
                     TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
             LoadBalancerArn: !Ref ElasticLoadBalancer
             Port: !Select [0, !Ref ServiceContainerListeningPorts]
-            Protocol: HTTP
+            Protocol: HTTPS
+            Certificates: [ CertificateArn: "arn:aws:acm:us-east-2:907263135169:certificate/8c5989ea-79e8-43c0-aff4-3c4976cf0b4f"]
 
