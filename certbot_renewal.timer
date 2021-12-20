@@ -1,0 +1,8 @@
+[Unit]
+Description=Scheduler for certbot_renewal service
+
+[Timer]
+OnCalendar=tue
+
+[Install]
+WantedBy=timers.target

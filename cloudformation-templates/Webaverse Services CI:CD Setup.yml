@@ -39,6 +39,10 @@ Parameters:
     Description: GitHub repository name
     Type: String
     Default: test
+  GitRepositoryURL:
+    Description: GitHub repository URL
+    Type: String
+    Default: empty
 Resources:
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
@@ -462,6 +466,10 @@ Resources:
                     Value: !Sub
                         -   "${secret}:password"
                         -   { secret: !ImportValue "Webaverse-Secrets-Deployment-DockerHubSecretName"}
+                  - 
+                    Name: "GIT_REPO_URL"
+                    Type: "PLAINTEXT"
+                    Value: !Ref GitRepositoryURL
                 Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
                 ImagePullCredentialsType: "CODEBUILD"
                 PrivilegedMode: true

@@ -1,0 +1,9 @@
+[Unit]
+Description=Syncs certbot certs from s3
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /scripts/certbot_renewal.sh
+~                                                                                                                                                                                     
+~                                                                                                                                                                                     
+~            
