@@ -381,6 +381,11 @@ Resources:
                 ToPort: !Select [0, !Ref ServiceContainerListeningPorts]
               - 
                 CidrIp: "0.0.0.0/0"
+                FromPort: 80
+                IpProtocol: "tcp"
+                ToPort: 80
+              - 
+                CidrIp: "0.0.0.0/0"
                 FromPort: -1
                 IpProtocol: "icmp"
                 ToPort: -1
@@ -665,4 +670,16 @@ Resources:
             Port: !Select [0, !Ref ServiceContainerListeningPorts]
             Protocol: HTTPS
             Certificates: [ CertificateArn: "arn:aws:acm:us-east-2:907263135169:certificate/8c5989ea-79e8-43c0-aff4-3c4976cf0b4f"]
+    ElasticLoadBalancerListenerHTTP:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties: 
+            DefaultActions: 
+                -   Type: "redirect"
+                    RedirectConfig:
+                        Protocol: "HTTPS"
+                        Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                        StatusCode: "HTTP_302"
+            LoadBalancerArn: !Ref ElasticLoadBalancer
+            Port: 80
+            Protocol: HTTP
 
