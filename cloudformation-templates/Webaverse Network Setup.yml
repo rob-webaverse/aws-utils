@@ -27,7 +27,7 @@ Resources:
                 Fn::GetAtt:
                 - EIP
                 - AllocationId
-            SubnetId: !Ref EC2SubnetB
+            SubnetId: !Ref EC2SubnetAPublic
             Tags:
             -   Key: "Name"
                 Value: "Webaverse-Services"
@@ -67,77 +67,142 @@ Resources:
             RouteTableId: !Ref RouteTablePublic
             DestinationCidrBlock: 0.0.0.0/0
             GatewayId: !Ref EC2VPCIGW
-    EC2SubnetA:
+    EC2SubnetAPublic:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}a"
-            CidrBlock: "10.10.0.0/20"
+            CidrBlock: "10.10.0.0/21"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
             Tags: 
             -   Key: "Name"
-                Value: !Sub "Webaverse-Services-SubnetA"
+                Value: !Sub "Webaverse-Services-SubnetA-Public"
             -   Key: "Access"
                 Value: !Sub "Public"
-    SubnetRouteTableAssociationA:
+    SubnetRouteTableAssociationAPublic:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
-            SubnetId: !Ref EC2SubnetA
+            SubnetId: !Ref EC2SubnetAPublic
             RouteTableId: !Ref RouteTablePublic
-    EC2SubnetB:
+    EC2SubnetAPrivate:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}a"
+            CidrBlock: "10.10.8.0/21"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: false
+            Tags: 
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetA-Private"
+            -   Key: "Access"
+                Value: !Sub "Private"
+    SubnetRouteTableAssociationAPrivate:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetAPrivate
+            RouteTableId: !Ref RouteTablePrivate
+    EC2SubnetBPublic:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}b"
-            CidrBlock: "10.10.16.0/20"
+            CidrBlock: "10.10.16.0/21"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
             Tags: 
             -   Key: "Name"
-                Value: !Sub "Webaverse-Services-SubnetB"
+                Value: !Sub "Webaverse-Services-SubnetB-Public"
             -   Key: "Access"
                 Value: !Sub "Public"
-
-    SubnetRouteTableAssociationB:
+    SubnetRouteTableAssociationBPublic:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
-            SubnetId: !Ref EC2SubnetB
+            SubnetId: !Ref EC2SubnetBPublic
             RouteTableId: !Ref RouteTablePublic
-    EC2SubnetC:
+    EC2SubnetBPrivate:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}b"
+            CidrBlock: "10.10.24.0/21"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: false
+            Tags: 
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetB-Private"
+            -   Key: "Access"
+                Value: !Sub "Private"
+    SubnetRouteTableAssociationBPrivate:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetBPrivate
+            RouteTableId: !Ref RouteTablePrivate
+    EC2SubnetCPublic:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}c"
-            CidrBlock: "10.10.32.0/20"
+            CidrBlock: "10.10.32.0/21"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
             Tags:
             -   Key: "Name"
-                Value: !Sub "Webaverse-Services-SubnetC"
+                Value: !Sub "Webaverse-Services-SubnetC-Public"
             -   Key: "Access"
                 Value: !Sub "Public"
-
-    SubnetRouteTableAssociationC:
+    SubnetRouteTableAssociationCPublic:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
-            SubnetId: !Ref EC2SubnetC
+            SubnetId: !Ref EC2SubnetCPublic
             RouteTableId: !Ref RouteTablePublic
-    EC2SubnetD:
+    EC2SubnetCPrivate:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}c"
+            CidrBlock: "10.10.40.0/21"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: false
+            Tags:
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetC-Private"
+            -   Key: "Access"
+                Value: !Sub "Private"
+    SubnetRouteTableAssociationCPrivate:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetCPrivate
+            RouteTableId: !Ref RouteTablePrivate
+    EC2SubnetDPublic:
         Type: "AWS::EC2::Subnet"
         Properties:
             AvailabilityZone: !Sub "${AWS::Region}b"
-            CidrBlock: "10.10.48.0/20"
+            CidrBlock: "10.10.48.0/21"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
             Tags:
             -   Key: "Name"
-                Value: !Sub "Webaverse-Services-SubnetD"
+                Value: !Sub "Webaverse-Services-SubnetD-Public"
             -   Key: "Access"
                 Value: !Sub "Public"
-
-    SubnetRouteTableAssociationD:
+    SubnetRouteTableAssociationDPublic:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
-            SubnetId: !Ref EC2SubnetD
+            SubnetId: !Ref EC2SubnetDPublic
             RouteTableId: !Ref RouteTablePublic
+    EC2SubnetDPrivate:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            AvailabilityZone: !Sub "${AWS::Region}b"
+            CidrBlock: "10.10.56.0/21"
+            VpcId: !Ref EC2VPC
+            MapPublicIpOnLaunch: false
+            Tags:
+            -   Key: "Name"
+                Value: !Sub "Webaverse-Services-SubnetD-Private"
+            -   Key: "Access"
+                Value: !Sub "Private"
+    SubnetRouteTableAssociationDPrivate:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref EC2SubnetDPrivate
+            RouteTableId: !Ref RouteTablePrivate
     ECSCluster:
         Type: "AWS::ECS::Cluster"
         Properties:
@@ -151,44 +216,64 @@ Outputs:
         Value: !Ref EC2VPC
         Export:
             Name: !Sub "${AWS::StackName}-VPCID"
-    StackSubnetA:
-        Description: The ID of the stack SubnetA
-        Value: !Ref EC2SubnetA
+    StackSubnetAPublic:
+        Description: The ID of the stack SubnetA Public
+        Value: !Ref EC2SubnetAPublic
         Export:
-            Name: !Sub "${AWS::StackName}-EC2SubnetA"
+            Name: !Sub "${AWS::StackName}-EC2SubnetA-Public"
+    StackSubnetAPrivate:
+        Description: The ID of the stack SubnetA Private
+        Value: !Ref EC2SubnetAPrivate
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetA-Private"
     StackSubnetAAZ:
         Description: The AvailabilityZone of the stack SubnetA
-        Value: !GetAtt EC2SubnetA.AvailabilityZone
+        Value: !GetAtt EC2SubnetAPublic.AvailabilityZone
         Export:
             Name: !Sub "${AWS::StackName}-EC2SubnetA-AZ"
-    StackSubnetB:
-        Description: The ID of the stack SubnetB
-        Value: !Ref EC2SubnetB
+    StackSubnetBPublic:
+        Description: The ID of the stack SubnetB Public
+        Value: !Ref EC2SubnetBPublic
         Export:
-            Name: !Sub "${AWS::StackName}-EC2SubnetB"
+            Name: !Sub "${AWS::StackName}-EC2SubnetB-Public"
+    StackSubnetBPrivate:
+        Description: The ID of the stack SubnetB Private
+        Value: !Ref EC2SubnetBPrivate
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetB-Private"
     StackSubnetBAZ:
         Description: The AvailabilityZone of the stack SubnetB
-        Value: !GetAtt EC2SubnetB.AvailabilityZone
+        Value: !GetAtt EC2SubnetBPublic.AvailabilityZone
         Export:
             Name: !Sub "${AWS::StackName}-EC2SubnetB-AZ"
-    StackSubnetC:
-        Description: The ID of the stack SubnetC
-        Value: !Ref EC2SubnetC
+    StackSubnetCPublic:
+        Description: The ID of the stack SubnetC Public
+        Value: !Ref EC2SubnetCPublic
         Export:
-            Name: !Sub "${AWS::StackName}-EC2SubnetC"
+            Name: !Sub "${AWS::StackName}-EC2SubnetC-Public"
+    StackSubnetCPrivate:
+        Description: The ID of the stack SubnetC Private
+        Value: !Ref EC2SubnetCPrivate
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetC-Private"
     StackSubnetCAZ:
         Description: The AvailabilityZone of the stack SubnetC
-        Value: !GetAtt EC2SubnetC.AvailabilityZone
+        Value: !GetAtt EC2SubnetCPublic.AvailabilityZone
         Export:
             Name: !Sub "${AWS::StackName}-EC2SubnetC-AZ"
-    StackSubnetD:
-        Description: The ID of the stack SubnetD
-        Value: !Ref EC2SubnetD
+    StackSubnetDPublic:
+        Description: The ID of the stack SubnetD Public
+        Value: !Ref EC2SubnetDPublic
         Export:
-            Name: !Sub "${AWS::StackName}-EC2SubnetD"
+            Name: !Sub "${AWS::StackName}-EC2SubnetD-Public"
+    StackSubnetDPrivate:
+        Description: The ID of the stack SubnetD Private
+        Value: !Ref EC2SubnetDPrivate
+        Export:
+            Name: !Sub "${AWS::StackName}-EC2SubnetD-Private"
     StackSubnetDAZ:
         Description: The AvailabilityZone of the stack SubnetD
-        Value: !GetAtt EC2SubnetD.AvailabilityZone
+        Value: !GetAtt EC2SubnetDPublic.AvailabilityZone
         Export:
             Name: !Sub "${AWS::StackName}-EC2SubnetD-AZ"
     StackECSCluster:

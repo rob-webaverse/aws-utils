@@ -43,6 +43,10 @@ Parameters:
     Description: GitHub repository URL
     Type: String
     Default: empty
+  ECSDesiredCount:
+    Description: ECS Desired Count
+    Type: String
+    Default: "1"
 Resources:
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
@@ -407,7 +411,7 @@ Resources:
             TargetGroupAttributes: 
               - 
                 Key: "stickiness.enabled"
-                Value: "false"
+                Value: "true"
               - 
                 Key: "deregistration_delay.timeout_seconds"
                 Value: "300"
@@ -425,7 +429,7 @@ Resources:
                 Value: "0"
               - 
                 Key: "stickiness.app_cookie.duration_seconds"
-                Value: "86400"
+                Value: "604800"
               - 
                 Key: "load_balancing.algorithm.type"
                 Value: "round_robin"
@@ -435,6 +439,16 @@ Resources:
                 Port: !Select [0, !Ref ServiceContainerListeningPorts]
                 AvailabilityZone: 
                     "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-AZ"
+              - 
+                Id: "10.10.16.254"
+                Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-AZ"
+              - 
+                Id: "10.10.0.254"
+                Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-AZ"
 
     ECRRepository:
         Type: "AWS::ECR::Repository"
@@ -507,7 +521,7 @@ Resources:
                 TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
                 ContainerName: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
                 ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
-            DesiredCount: 1
+            DesiredCount: !Ref ECSDesiredCount
             LaunchType: "FARGATE"
             PlatformVersion: "LATEST"
             TaskDefinition: !Ref ECSTaskDefinition
@@ -519,12 +533,13 @@ Resources:
                     Rollback: false
             NetworkConfiguration: 
                 AwsvpcConfiguration: 
-                    AssignPublicIp: "ENABLED"
+                    AssignPublicIp: "DISABLED"
                     SecurityGroups: 
                       - !Ref EC2SecurityGroup
                     Subnets: 
-                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC"
-                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA"
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-Private"
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-Private"
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-Private"
             HealthCheckGracePeriodSeconds: 0
             SchedulingStrategy: "REPLICA"
 
@@ -637,8 +652,9 @@ Resources:
             SecurityGroups: 
                 - !Ref EC2SecurityGroup
             Subnets: 
-                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC"
-                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA"
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-Public"
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-Public"
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-Public"
     ElasticLoadBalancerListener:
         Type: AWS::ElasticLoadBalancingV2::Listener
         Properties: 
