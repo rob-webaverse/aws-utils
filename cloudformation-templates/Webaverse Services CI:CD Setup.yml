@@ -358,6 +358,10 @@ Resources:
                     ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
                     HostPort: !Select [0, !Ref ServiceContainerListeningPorts]
                     Protocol: "tcp"
+                  - 
+                    ContainerPort: !Select [1, !Ref ServiceContainerListeningPorts]
+                    HostPort: !Select [1, !Ref ServiceContainerListeningPorts]
+                    Protocol: "tcp"
             Family: !Sub "run_webaverse_${ServiceName}"
             ExecutionRoleArn: !GetAtt ECSTaskExecutionRole2.Arn
             NetworkMode: "awsvpc"
@@ -381,6 +385,11 @@ Resources:
                 ToPort: !Select [0, !Ref ServiceContainerListeningPorts]
               - 
                 CidrIp: "0.0.0.0/0"
+                FromPort: !Select [1, !Ref ServiceContainerListeningPorts]
+                IpProtocol: "tcp"
+                ToPort: !Select [1, !Ref ServiceContainerListeningPorts]
+              - 
+                CidrIp: "0.0.0.0/0"
                 FromPort: 80
                 IpProtocol: "tcp"
                 ToPort: 80
@@ -394,7 +403,7 @@ Resources:
                 CidrIp: "0.0.0.0/0"
                 IpProtocol: "-1"
 
-    ElasticLoadBalancingV2TargetGroup:
+    ElasticLoadBalancingV2TargetGroup1:
         Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
         Properties:
             HealthCheckIntervalSeconds: 30
@@ -411,7 +420,7 @@ Resources:
             HealthyThresholdCount: 5
             VpcId: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
-            Name: !Sub "TG-${ServiceName}-${AWS::Region}"
+            Name: !Sub "TG-${ServiceName}-${AWS::Region}-1"
             HealthCheckEnabled: true
             TargetGroupAttributes: 
               - 
@@ -455,6 +464,67 @@ Resources:
                 AvailabilityZone: 
                     "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-AZ"
 
+    ElasticLoadBalancingV2TargetGroup2:
+        Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+        Properties:
+            HealthCheckIntervalSeconds: 30
+            HealthCheckPath: !Ref ServiceTargetGroupHealthCheckPath
+            Port: !Select [1, !Ref ServiceContainerListeningPorts]
+            Protocol: "HTTPS"
+            HealthCheckPort: "traffic-port"
+            HealthCheckProtocol: "HTTPS"
+            HealthCheckTimeoutSeconds: 5
+            UnhealthyThresholdCount: 2
+            TargetType: "ip"
+            Matcher: 
+                HttpCode: "200"
+            HealthyThresholdCount: 5
+            VpcId: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
+            Name: !Sub "TG-${ServiceName}-${AWS::Region}-2"
+            HealthCheckEnabled: true
+            TargetGroupAttributes: 
+              - 
+                Key: "stickiness.enabled"
+                Value: "true"
+              - 
+                Key: "deregistration_delay.timeout_seconds"
+                Value: "300"
+              - 
+                Key: "stickiness.app_cookie.cookie_name"
+                Value: ""
+              - 
+                Key: "stickiness.type"
+                Value: "lb_cookie"
+              - 
+                Key: "stickiness.lb_cookie.duration_seconds"
+                Value: "86400"
+              - 
+                Key: "slow_start.duration_seconds"
+                Value: "0"
+              - 
+                Key: "stickiness.app_cookie.duration_seconds"
+                Value: "604800"
+              - 
+                Key: "load_balancing.algorithm.type"
+                Value: "round_robin"
+            Targets: 
+              - 
+                Id: "10.10.32.254"
+                Port: !Select [1, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-AZ"
+              - 
+                Id: "10.10.16.254"
+                Port: !Select [1, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-AZ"
+              - 
+                Id: "10.10.0.254"
+                Port: !Select [1, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-AZ"
+
     ECRRepository:
         Type: "AWS::ECR::Repository"
         Properties:
@@ -491,6 +561,12 @@ Resources:
                         -   "${secret}:password"
                         -   { secret: !ImportValue "Webaverse-Secrets-Deployment-DockerHubSecretName"}
                   - 
+                    Name: "PM2_SECRET_KEY"
+                    Type: "SECRETS_MANAGER"
+                    Value: !Sub
+                        -   "${secret}:pm2secretkey"
+                        -   { secret: !ImportValue "Webaverse-Secrets-Deployment-PM2SecretKey"}
+                  - 
                     Name: "GIT_REPO_URL"
                     Type: "PLAINTEXT"
                     Value: !Ref GitRepositoryURL
@@ -514,18 +590,22 @@ Resources:
                     EncryptionDisabled: false
             Visibility: "PRIVATE"
 
-    ECSService:
+    ECSService1:
         Type: "AWS::ECS::Service"
         DependsOn: ElasticLoadBalancerListener
         Properties:
-            ServiceName: !Sub "ECSService-${ServiceName}-${AWS::Region}"
+            ServiceName: !Sub "ECSService1-${ServiceName}-${AWS::Region}"
             Cluster: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-ECSClusterArn"
             LoadBalancers: 
               - 
-                TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
+                TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup1
                 ContainerName: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
                 ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
+              - 
+                TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup2
+                ContainerName: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
+                ContainerPort: !Select [1, !Ref ServiceContainerListeningPorts]
             DesiredCount: !Ref ECSDesiredCount
             LaunchType: "FARGATE"
             PlatformVersion: "LATEST"
@@ -622,7 +702,7 @@ Resources:
                     Configuration: 
                         ClusterName: 
                             "Fn::ImportValue": "Webaverse-Network-Deployment-ECSCluster"
-                        ServiceName: !Ref ECSService
+                        ServiceName: !Ref ECSService1
                     InputArtifacts: 
                       - 
                         Name: "BuildArtifact"
@@ -665,9 +745,19 @@ Resources:
         Properties: 
             DefaultActions: 
                 -   Type: "forward"
-                    TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup
+                    TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup1
             LoadBalancerArn: !Ref ElasticLoadBalancer
             Port: !Select [0, !Ref ServiceContainerListeningPorts]
+            Protocol: HTTPS
+            Certificates: [ CertificateArn: "arn:aws:acm:us-east-2:907263135169:certificate/8c5989ea-79e8-43c0-aff4-3c4976cf0b4f"]
+    ElasticLoadBalancerListener2:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties: 
+            DefaultActions: 
+                -   Type: "forward"
+                    TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup2
+            LoadBalancerArn: !Ref ElasticLoadBalancer
+            Port: !Select [1, !Ref ServiceContainerListeningPorts]
             Protocol: HTTPS
             Certificates: [ CertificateArn: "arn:aws:acm:us-east-2:907263135169:certificate/8c5989ea-79e8-43c0-aff4-3c4976cf0b4f"]
     ElasticLoadBalancerListenerHTTP:
