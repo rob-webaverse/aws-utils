@@ -47,6 +47,10 @@ Parameters:
     Description: ECS Desired Count
     Type: String
     Default: "1"
+  CertificateArn:
+    Description: CertificateArn
+    Type: String
+    Default: "1"
 Resources:
     CodeBuildImageRepositoryPolicy:
         Type: "AWS::IAM::ManagedPolicy"
@@ -471,7 +475,7 @@ Resources:
             HealthCheckPath: !Ref ServiceTargetGroupHealthCheckPath
             Port: !Select [1, !Ref ServiceContainerListeningPorts]
             Protocol: "HTTPS"
-            HealthCheckPort: "traffic-port"
+            HealthCheckPort: !Select [0, !Ref ServiceContainerListeningPorts]
             HealthCheckProtocol: "HTTPS"
             HealthCheckTimeoutSeconds: 5
             UnhealthyThresholdCount: 2
@@ -481,7 +485,6 @@ Resources:
             HealthyThresholdCount: 5
             VpcId: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
-            Name: !Sub "TG-${ServiceName}-${AWS::Region}-2"
             HealthCheckEnabled: true
             TargetGroupAttributes: 
               - 
@@ -594,7 +597,6 @@ Resources:
         Type: "AWS::ECS::Service"
         DependsOn: ElasticLoadBalancerListener
         Properties:
-            ServiceName: !Sub "ECSService1-${ServiceName}-${AWS::Region}"
             Cluster: 
                 "Fn::ImportValue": "Webaverse-Network-Deployment-ECSClusterArn"
             LoadBalancers: 
@@ -749,7 +751,7 @@ Resources:
             LoadBalancerArn: !Ref ElasticLoadBalancer
             Port: !Select [0, !Ref ServiceContainerListeningPorts]
             Protocol: HTTPS
-            Certificates: [ CertificateArn: "arn:aws:acm:us-east-2:907263135169:certificate/8c5989ea-79e8-43c0-aff4-3c4976cf0b4f"]
+            Certificates: [ CertificateArn: !Ref CertificateArn]
     ElasticLoadBalancerListener2:
         Type: AWS::ElasticLoadBalancingV2::Listener
         Properties: 
@@ -759,7 +761,7 @@ Resources:
             LoadBalancerArn: !Ref ElasticLoadBalancer
             Port: !Select [1, !Ref ServiceContainerListeningPorts]
             Protocol: HTTPS
-            Certificates: [ CertificateArn: "arn:aws:acm:us-east-2:907263135169:certificate/8c5989ea-79e8-43c0-aff4-3c4976cf0b4f"]
+            Certificates: [ CertificateArn: !Ref CertificateArn]
     ElasticLoadBalancerListenerHTTP:
         Type: AWS::ElasticLoadBalancingV2::Listener
         Properties: 

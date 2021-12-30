@@ -172,7 +172,7 @@ Resources:
     EC2SubnetDPublic:
         Type: "AWS::EC2::Subnet"
         Properties:
-            AvailabilityZone: !Sub "${AWS::Region}b"
+            AvailabilityZone: !Sub "${AWS::Region}d"
             CidrBlock: "10.10.48.0/21"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: true
@@ -189,7 +189,7 @@ Resources:
     EC2SubnetDPrivate:
         Type: "AWS::EC2::Subnet"
         Properties:
-            AvailabilityZone: !Sub "${AWS::Region}b"
+            AvailabilityZone: !Sub "${AWS::Region}d"
             CidrBlock: "10.10.56.0/21"
             VpcId: !Ref EC2VPC
             MapPublicIpOnLaunch: false

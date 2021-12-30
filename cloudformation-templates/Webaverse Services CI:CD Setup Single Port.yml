@@ -1,0 +1,694 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: "Webaverse Service Containerization"
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: test
+    Description: Name the service that will be containerized
+  GitSource:
+    Type: String
+    Default: https://github.com/rob-webaverse/app.git
+    Description: Link to the git repo that contains the service
+  ServiceContainerListeningPorts:
+    Type: List<Number>
+    Default: 80
+    Description: Ports that the service is presenting and should thus be open to the container
+  ServiceContainerCPUSize:
+    Type: String
+    Default: 256
+    Description: Ports that the service is presenting and should thus be open to the container
+  ServiceContainerRAMSize:
+    Type: String
+    Default: 512
+    Description: Ports that the service is presenting and should thus be open to the container
+  ServiceTargetGroupHealthCheckPath:
+    Type: String
+    Default: "/"
+    Description: Ports that the service is presenting and should thus be open to the container
+  GitHubConnectionArn:
+    Type: String
+    Default: empty
+  GitBranchName:
+    Description: GitHub branch name
+    Type: String
+    Default: master
+  GitRepositoryName:
+    Description: GitHub repository name
+    Type: String
+    Default: test
+  GitRepositoryURL:
+    Description: GitHub repository URL
+    Type: String
+    Default: empty
+  ECSDesiredCount:
+    Description: ECS Desired Count
+    Type: String
+    Default: "1"
+  CertificateArn:
+    Description: CertificateArn
+    Type: String
+    Default: "1"
+Resources:
+    CodeBuildImageRepositoryPolicy:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "CodeBuildImageRepositoryPolicy-${ServiceName}-${AWS::Region}"
+            Path: "/service-role/"
+            PolicyDocument: !Sub |
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecr:GetAuthorizationToken"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecr:BatchCheckLayerAvailability",
+                                "ecr:GetDownloadUrlForLayer",
+                                "ecr:BatchGetImage",
+                                "ecr:PutImage",
+                                "ecr:InitiateLayerUpload",
+                                "ecr:UploadLayerPart",
+                                "ecr:CompleteLayerUpload"
+                            ],
+                            "Resource": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/ecrrepository-${ServiceName}-${AWS::Region}"
+                        }
+                    ]
+                }
+
+    CodeBuildBasePolicy2:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ServiceName}-${AWS::Region}2"
+            Path: "/service-role/"
+            PolicyDocument: !Sub |
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "VisualEditor0",
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecr:GetRegistryPolicy",
+                                "ecr:DescribeImageScanFindings",
+                                "ecr:GetLifecyclePolicyPreview",
+                                "ecr:GetDownloadUrlForLayer",
+                                "ecr:DescribeRegistry",
+                                "ecr:DescribeImageReplicationStatus",
+                                "ecr:GetAuthorizationToken",
+                                "ecr:ListTagsForResource",
+                                "ecr:BatchGetImage",
+                                "ecr:DescribeRepositories",
+                                "ecr:BatchCheckLayerAvailability",
+                                "ecr:GetRepositoryPolicy",
+                                "ecr:GetLifecyclePolicy"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "VisualEditor1",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetBucketAcl",
+                                "logs:CreateLogGroup",
+                                "logs:PutLogEvents",
+                                "codebuild:CreateReportGroup",
+                                "codebuild:CreateReport",
+                                "s3:PutObject",
+                                "s3:GetObject",
+                                "logs:CreateLogStream",
+                                "codebuild:UpdateReport",
+                                "codebuild:BatchPutCodeCoverages",
+                                "codebuild:BatchPutTestCases",
+                                "s3:GetBucketLocation",
+                                "s3:GetObjectVersion"
+                            ],
+                            "Resource": [
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/webaverse-${ServiceName}:*",
+                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/webaverse-${ServiceName}*",
+                                "arn:aws:s3:::codepipeline-${ServiceName}-${AWS::Region}-*"
+                            ]
+                        }
+                    ]
+                }
+
+
+    CodePipelineManagedPolicy:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "CodePipelineManagedPolicy-${ServiceName}-${AWS::Region}"
+            Path: "/service-role/"
+            PolicyDocument: |
+                {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "iam:PassRole"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow",
+                            "Condition": {
+                                "StringEqualsIfExists": {
+                                    "iam:PassedToService": [
+                                        "cloudformation.amazonaws.com",
+                                        "elasticbeanstalk.amazonaws.com",
+                                        "ec2.amazonaws.com",
+                                        "ecs-tasks.amazonaws.com"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "Action": [
+                                "codecommit:CancelUploadArchive",
+                                "codecommit:GetBranch",
+                                "codecommit:GetCommit",
+                                "codecommit:GetRepository",
+                                "codecommit:GetUploadArchiveStatus",
+                                "codecommit:UploadArchive"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "codedeploy:CreateDeployment",
+                                "codedeploy:GetApplication",
+                                "codedeploy:GetApplicationRevision",
+                                "codedeploy:GetDeployment",
+                                "codedeploy:GetDeploymentConfig",
+                                "codedeploy:RegisterApplicationRevision"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "codestar-connections:UseConnection"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "elasticbeanstalk:*",
+                                "ec2:*",
+                                "elasticloadbalancing:*",
+                                "autoscaling:*",
+                                "cloudwatch:*",
+                                "s3:*",
+                                "sns:*",
+                                "cloudformation:*",
+                                "rds:*",
+                                "sqs:*",
+                                "ecs:*"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "lambda:InvokeFunction",
+                                "lambda:ListFunctions"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "opsworks:CreateDeployment",
+                                "opsworks:DescribeApps",
+                                "opsworks:DescribeCommands",
+                                "opsworks:DescribeDeployments",
+                                "opsworks:DescribeInstances",
+                                "opsworks:DescribeStacks",
+                                "opsworks:UpdateApp",
+                                "opsworks:UpdateStack"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "cloudformation:CreateStack",
+                                "cloudformation:DeleteStack",
+                                "cloudformation:DescribeStacks",
+                                "cloudformation:UpdateStack",
+                                "cloudformation:CreateChangeSet",
+                                "cloudformation:DeleteChangeSet",
+                                "cloudformation:DescribeChangeSet",
+                                "cloudformation:ExecuteChangeSet",
+                                "cloudformation:SetStackPolicy",
+                                "cloudformation:ValidateTemplate"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "codebuild:BatchGetBuilds",
+                                "codebuild:StartBuild",
+                                "codebuild:BatchGetBuildBatches",
+                                "codebuild:StartBuildBatch"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "devicefarm:ListProjects",
+                                "devicefarm:ListDevicePools",
+                                "devicefarm:GetRun",
+                                "devicefarm:GetUpload",
+                                "devicefarm:CreateUpload",
+                                "devicefarm:ScheduleRun"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "servicecatalog:ListProvisioningArtifacts",
+                                "servicecatalog:CreateProvisioningArtifact",
+                                "servicecatalog:DescribeProvisioningArtifact",
+                                "servicecatalog:DeleteProvisioningArtifact",
+                                "servicecatalog:UpdateProduct"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:ValidateTemplate"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecr:DescribeImages"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "states:DescribeExecution",
+                                "states:DescribeStateMachine",
+                                "states:StartExecution"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "appconfig:StartDeployment",
+                                "appconfig:StopDeployment",
+                                "appconfig:GetDeployment"
+                            ],
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+
+
+    CodePipelineServiceRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName: !Sub "CodePipelineServiceRole-${ServiceName}-${AWS::Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codepipeline.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+              - !Ref CodePipelineManagedPolicy
+    ECSLogGroup: 
+        Type: AWS::Logs::LogGroup
+        Properties: 
+            LogGroupName: !Sub "ecs-${ServiceName}"
+            RetentionInDays: 7
+    CodeBuildLogGroup: 
+        Type: AWS::Logs::LogGroup
+        Properties: 
+            LogGroupName: !Sub "codebuild-${ServiceName}"
+            RetentionInDays: 7
+    ECSTaskDefinition:
+        Type: "AWS::ECS::TaskDefinition"
+        Properties:
+            ContainerDefinitions: 
+              - 
+                Essential: true
+                Image: amazon/amazon-ecs-sample
+                LogConfiguration: 
+                    LogDriver: "awslogs"
+                    Options: 
+                        awslogs-group: !Ref ECSLogGroup
+                        awslogs-region: !Ref AWS::Region
+                        awslogs-stream-prefix: "ecs"
+                Name: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
+                PortMappings: 
+                  - 
+                    ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
+                    HostPort: !Select [0, !Ref ServiceContainerListeningPorts]
+                    Protocol: "tcp"
+            Family: !Sub "run_webaverse_${ServiceName}"
+            ExecutionRoleArn: !GetAtt ECSTaskExecutionRole2.Arn
+            NetworkMode: "awsvpc"
+            RequiresCompatibilities: 
+              - "FARGATE"
+            Cpu: !Ref ServiceContainerCPUSize
+            Memory: !Ref ServiceContainerRAMSize
+
+    EC2SecurityGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+            GroupDescription: !Sub "Allows access to ${ServiceName} from anywhere"
+            GroupName: !Sub "SecurityGroup-${ServiceName}-${AWS::Region}"
+            VpcId: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
+            SecurityGroupIngress: 
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: !Select [0, !Ref ServiceContainerListeningPorts]
+                IpProtocol: "tcp"
+                ToPort: !Select [0, !Ref ServiceContainerListeningPorts]
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: 80
+                IpProtocol: "tcp"
+                ToPort: 80
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: -1
+                IpProtocol: "icmp"
+                ToPort: -1
+            SecurityGroupEgress: 
+              - 
+                CidrIp: "0.0.0.0/0"
+                IpProtocol: "-1"
+
+    ElasticLoadBalancingV2TargetGroup1:
+        Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+        Properties:
+            HealthCheckIntervalSeconds: 30
+            HealthCheckPath: !Ref ServiceTargetGroupHealthCheckPath
+            Port: !Select [0, !Ref ServiceContainerListeningPorts]
+            Protocol: "HTTPS"
+            HealthCheckPort: "traffic-port"
+            HealthCheckProtocol: "HTTPS"
+            HealthCheckTimeoutSeconds: 5
+            UnhealthyThresholdCount: 2
+            TargetType: "ip"
+            Matcher: 
+                HttpCode: "200"
+            HealthyThresholdCount: 5
+            VpcId: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-VPCID"
+            Name: !Sub "TG-${ServiceName}-${AWS::Region}-1"
+            HealthCheckEnabled: true
+            TargetGroupAttributes: 
+              - 
+                Key: "stickiness.enabled"
+                Value: "true"
+              - 
+                Key: "deregistration_delay.timeout_seconds"
+                Value: "300"
+              - 
+                Key: "stickiness.app_cookie.cookie_name"
+                Value: ""
+              - 
+                Key: "stickiness.type"
+                Value: "lb_cookie"
+              - 
+                Key: "stickiness.lb_cookie.duration_seconds"
+                Value: "86400"
+              - 
+                Key: "slow_start.duration_seconds"
+                Value: "0"
+              - 
+                Key: "stickiness.app_cookie.duration_seconds"
+                Value: "604800"
+              - 
+                Key: "load_balancing.algorithm.type"
+                Value: "round_robin"
+            Targets: 
+              - 
+                Id: "10.10.32.254"
+                Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-AZ"
+              - 
+                Id: "10.10.16.254"
+                Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-AZ"
+              - 
+                Id: "10.10.0.254"
+                Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                AvailabilityZone: 
+                    "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-AZ"
+
+    ECRRepository:
+        Type: "AWS::ECR::Repository"
+        Properties:
+            RepositoryName: !Sub "ecrrepository-${ServiceName}-${AWS::Region}"
+            
+
+    CodeBuildProject:
+        Type: "AWS::CodeBuild::Project"
+        Properties:
+            Name: !Sub "CodeBuildProject-${ServiceName}-${AWS::Region}"
+            Source: 
+                InsecureSsl: false
+                Type: "CODEPIPELINE"
+            Artifacts: 
+                EncryptionDisabled: false
+                Name: !Sub "CodeBuildProjectArtifacts-${ServiceName}-${AWS::Region}"
+                Packaging: "NONE"
+                Type: "CODEPIPELINE"
+            Cache: 
+                Type: "NO_CACHE"
+            Environment: 
+                ComputeType: "BUILD_GENERAL1_SMALL"
+                EnvironmentVariables: 
+                  - 
+                    Name: "DOCKERHUB_USERNAME"
+                    Type: "SECRETS_MANAGER"
+                    Value: !Sub
+                        -   "${secret}:username"
+                        -   { secret: !ImportValue "Webaverse-Secrets-Deployment-DockerHubSecretName"}
+                  - 
+                    Name: "DOCKERHUB_PASSWORD"
+                    Type: "SECRETS_MANAGER"
+                    Value: !Sub
+                        -   "${secret}:password"
+                        -   { secret: !ImportValue "Webaverse-Secrets-Deployment-DockerHubSecretName"}
+                  - 
+                    Name: "PM2_SECRET_KEY"
+                    Type: "SECRETS_MANAGER"
+                    Value: !Sub
+                        -   "${secret}:pm2secretkey"
+                        -   { secret: !ImportValue "Webaverse-Secrets-Deployment-PM2SecretKey"}
+                  - 
+                    Name: "GIT_REPO_URL"
+                    Type: "PLAINTEXT"
+                    Value: !Ref GitRepositoryURL
+                Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+                ImagePullCredentialsType: "CODEBUILD"
+                PrivilegedMode: true
+                Type: "LINUX_CONTAINER"
+            ServiceRole: 
+                "Fn::ImportValue": "Webaverse-Secrets-Deployment-CodeBuildServiceRole"
+            TimeoutInMinutes: 60
+            QueuedTimeoutInMinutes: 480
+            EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+            BadgeEnabled: false
+            LogsConfig: 
+                CloudWatchLogs: 
+                    Status: "ENABLED"
+                    GroupName: !Ref CodeBuildLogGroup
+                S3Logs: 
+                    Status: "ENABLED"
+                    Location: !Sub "${CodePipelineS3Bucket}/webaverse-${ServiceName}-codebuild"
+                    EncryptionDisabled: false
+            Visibility: "PRIVATE"
+
+    ECSService1:
+        Type: "AWS::ECS::Service"
+        DependsOn: ElasticLoadBalancerListener
+        Properties:
+            Cluster: 
+                "Fn::ImportValue": "Webaverse-Network-Deployment-ECSClusterArn"
+            LoadBalancers: 
+              - 
+                TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup1
+                ContainerName: !Sub "ECSContainer-${ServiceName}-${AWS::Region}"
+                ContainerPort: !Select [0, !Ref ServiceContainerListeningPorts]
+            DesiredCount: !Ref ECSDesiredCount
+            LaunchType: "FARGATE"
+            PlatformVersion: "LATEST"
+            TaskDefinition: !Ref ECSTaskDefinition
+            DeploymentConfiguration: 
+                MaximumPercent: 200
+                MinimumHealthyPercent: 100
+                DeploymentCircuitBreaker: 
+                    Enable: false
+                    Rollback: false
+            NetworkConfiguration: 
+                AwsvpcConfiguration: 
+                    AssignPublicIp: "DISABLED"
+                    SecurityGroups: 
+                      - !Ref EC2SecurityGroup
+                    Subnets: 
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-Private"
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-Private"
+                      - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-Private"
+            HealthCheckGracePeriodSeconds: 0
+            SchedulingStrategy: "REPLICA"
+
+    CodePipelineS3Bucket:
+        Type: "AWS::S3::Bucket"
+        Properties:
+            BucketName: !Sub "codepipeline-${ServiceName}-${AWS::Region}"
+
+    CodeDeployApplication:
+        Type: "AWS::CodeDeploy::Application"
+        Properties:
+            ApplicationName: !Sub "CodeDeployApplication-${ServiceName}-${AWS::Region}"
+            ComputePlatform: "ECS"
+    CodePipelinePipeline:
+        Type: "AWS::CodePipeline::Pipeline"
+        Properties:
+            Name: !Sub "CodePipeline-${ServiceName}-${AWS::Region}"
+            RoleArn: !GetAtt CodePipelineServiceRole.Arn
+            ArtifactStore: 
+                Location: !Ref CodePipelineS3Bucket
+                Type: "S3"
+            Stages: 
+              - 
+                Name: "Source"
+                Actions: 
+                  - 
+                    Name: "Source"
+                    ActionTypeId: 
+                        Category: "Source"
+                        Owner: "AWS"
+                        Provider: "CodeStarSourceConnection"
+                        Version: "1"
+                    Configuration: 
+                        BranchName: !Ref GitBranchName
+                        ConnectionArn: !Ref GitHubConnectionArn
+                        FullRepositoryId: !Ref GitRepositoryName
+                        OutputArtifactFormat: "CODEBUILD_CLONE_REF"
+                    OutputArtifacts: 
+                      - 
+                        Name: "SourceArtifact"
+                    Region: !Ref AWS::Region
+                    Namespace: "SourceVariables"
+                    RunOrder: 1
+              - 
+                Name: "Build"
+                Actions: 
+                  - 
+                    Name: "Build"
+                    ActionTypeId: 
+                        Category: "Build"
+                        Owner: "AWS"
+                        Provider: "CodeBuild"
+                        Version: "1"
+                    Configuration: 
+                        ProjectName: !Ref CodeBuildProject
+                    InputArtifacts: 
+                      - 
+                        Name: "SourceArtifact"
+                    OutputArtifacts: 
+                      - 
+                        Name: "BuildArtifact"
+                    Region: !Ref AWS::Region
+                    Namespace: "BuildVariables"
+                    RunOrder: 1
+              - 
+                Name: "Deploy"
+                Actions: 
+                  - 
+                    Name: "Deploy"
+                    ActionTypeId: 
+                        Category: "Deploy"
+                        Owner: "AWS"
+                        Provider: "ECS"
+                        Version: "1"
+                    Configuration: 
+                        ClusterName: 
+                            "Fn::ImportValue": "Webaverse-Network-Deployment-ECSCluster"
+                        ServiceName: !Ref ECSService1
+                    InputArtifacts: 
+                      - 
+                        Name: "BuildArtifact"
+                    Region: !Ref AWS::Region
+                    Namespace: "DeployVariables"
+                    RunOrder: 1
+
+    ECSAutoScaleRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/"
+            RoleName: !Sub "ECSAutoscaleRole-${ServiceName}-${AWS::Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"application-autoscaling.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole"
+
+    ECSTaskExecutionRole2:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/"
+            RoleName: !Sub "ECSTaskExecutionRole2-${ServiceName}-${AWS::Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    ElasticLoadBalancer:
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties: 
+            IpAddressType: 'ipv4'
+            Name: !Sub "ELB-${ServiceName}-${AWS::Region}"
+            SecurityGroups: 
+                - !Ref EC2SecurityGroup
+            Subnets: 
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetC-Public"
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetA-Public"
+                - "Fn::ImportValue": "Webaverse-Network-Deployment-EC2SubnetB-Public"
+    ElasticLoadBalancerListener:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties: 
+            DefaultActions: 
+                -   Type: "forward"
+                    TargetGroupArn: !Ref ElasticLoadBalancingV2TargetGroup1
+            LoadBalancerArn: !Ref ElasticLoadBalancer
+            Port: !Select [0, !Ref ServiceContainerListeningPorts]
+            Protocol: HTTPS
+            Certificates: [ CertificateArn: !Ref CertificateArn]
+    ElasticLoadBalancerListenerHTTP:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties: 
+            DefaultActions: 
+                -   Type: "redirect"
+                    RedirectConfig:
+                        Protocol: "HTTPS"
+                        Port: !Select [0, !Ref ServiceContainerListeningPorts]
+                        StatusCode: "HTTP_302"
+            LoadBalancerArn: !Ref ElasticLoadBalancer
+            Port: 80
+            Protocol: HTTP
+
