@@ -735,6 +735,10 @@ Resources:
         Type: AWS::ElasticLoadBalancingV2::LoadBalancer
         Properties: 
             IpAddressType: 'ipv4'
+            LoadBalancerAttributes: 
+                -
+                    Key: "idle_timeout.timeout_seconds"
+                    Value: "120"
             Name: !Sub "ELB-${ServiceName}-${AWS::Region}"
             SecurityGroups: 
                 - !Ref EC2SecurityGroup
