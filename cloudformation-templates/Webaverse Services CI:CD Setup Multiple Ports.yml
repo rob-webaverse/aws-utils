@@ -317,6 +317,11 @@ Resources:
                                 "appconfig:GetDeployment"
                             ],
                             "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "sns:Publish",
+                            "Resource": "*"
                         }
                     ],
                     "Version": "2012-10-17"
